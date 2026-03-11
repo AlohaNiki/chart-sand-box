@@ -4,7 +4,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
 import { PriceLineEditor } from "./components/price-line-editor";
 import {
-  Settings2,
   RotateCcw,
   Plus,
   Download,
@@ -80,7 +79,6 @@ function isValidPriceLine(obj: unknown): obj is PriceLineConfig {
 export default function App() {
   const [priceLines, setPriceLines] =
     useState<PriceLineConfig[]>(DEFAULT_PRICE_LINES);
-  const [panelOpen, setPanelOpen] = useState(true);
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -284,24 +282,6 @@ export default function App() {
               <RotateCcw size={14} style={{ color: "var(--muted-foreground)" }} />
               Reset
             </button>
-            <button
-              onClick={() => setPanelOpen(!panelOpen)}
-              className="flex items-center gap-[6px] px-[12px] py-[6px] rounded-[var(--radius)] transition-colors cursor-pointer"
-              style={{
-                background: panelOpen
-                  ? "var(--primary)"
-                  : "var(--secondary)",
-                color: panelOpen
-                  ? "var(--primary-foreground)"
-                  : "var(--muted-foreground)",
-                fontFamily: "'Inter Display', sans-serif",
-                fontSize: "var(--text-label)",
-              }}
-              title="Toggle settings panel"
-            >
-              <Settings2 size={14} style={{ color: panelOpen ? "var(--primary-foreground)" : "var(--muted-foreground)" }} />
-              Panel
-            </button>
           </div>
         </header>
 
@@ -321,8 +301,7 @@ export default function App() {
           </div>
 
           {/* Editing panel */}
-          {panelOpen && (
-            <aside
+          <aside
               className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-border overflow-y-auto"
               style={{ background: "var(--sidebar)" }}
             >
@@ -482,7 +461,6 @@ export default function App() {
                 </div>
               </div>
             </aside>
-          )}
         </div>
       </div>
     </DndProvider>
