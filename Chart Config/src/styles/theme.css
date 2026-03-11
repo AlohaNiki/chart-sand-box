@@ -193,6 +193,8 @@
 
   /* No direct match in design tokens — kept as-is */
   --border: rgba(128, 134, 148, 0.12);
+  /* Tailwind v4 uses --color-border for the border-border utility class */
+  --color-border: var(--border);
 
   --input: var(--input-bg-default);
   --input-background: var(--input-bg-default);
@@ -382,5 +384,6 @@
 
   /* Override border for light */
   --border: rgba(90, 97, 131, 0.15);
+  --color-border: var(--border);
   --sidebar-border: rgba(90, 97, 131, 0.15);
 }
