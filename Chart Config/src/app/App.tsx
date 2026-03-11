@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
@@ -538,6 +539,7 @@ export default function App() {
             </aside>
         </div>
       </div>
+      <SpeedInsights />
     </DndProvider>
   );
 }
