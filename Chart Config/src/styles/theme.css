@@ -1,0 +1,97 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Typography size variables */
+  --text-h1: 40px;
+  --text-h2: 27px;
+  --text-h3: 16px;
+  --text-h4: 14px;
+  --text-base: 14px;
+  --text-label: 12px;
+  --text-compact-button: 14px;
+  
+  /* The default background color for the application. */
+  --background: rgba(5, 5, 5, 1.00);
+  /* The default color for elements or text that appears on top of the background. */
+  --foreground: rgba(246, 247, 255, 1.00);
+  /* The background color for cards, modals, and other containers. */
+  --card: rgba(246, 247, 255, 0.05);
+  /* The default color for text or elements that appear on top of cards, modals and other background containers. */
+  --card-foreground: rgba(246, 247, 255, 1.00);
+  /* The background color for dropdowns and tooltips. */
+  --popover: rgba(15, 15, 17, 1.00);
+  /* The default color for text or elements that appear on top of dropdowns and tooltips. */
+  --popover-foreground: rgba(246, 247, 255, 1.00);
+  /* The primary color used for buttons, links, and other interactive elements. */
+  --primary: rgba(71, 99, 240, 1.00);
+  /* The default color for text or elements that appear on top of primary colored elements. */
+  --primary-foreground: rgba(255, 255, 255, 1.00);
+  /* The secondary color used for secondary(but NOT-DESTRUCTIVE) buttons and interactive elements. */
+  --secondary: rgba(246, 247, 255, 0.08);
+  /* The default color for text or elements that appear on top of secondary colored elements. */
+  --secondary-foreground: rgba(246, 247, 255, 1.00);
+  /* The muted color used for less prominent elements, such as disabled buttons or disabled text. */
+  --muted: rgba(246, 247, 255, 0.06);
+  /* The default color for text or elements that appear on top of muted colored elements. */
+  --muted-foreground: rgba(246, 247, 255, 0.50);
+  /* The accent color used for highlights, links, and other interactive elements. */
+  --accent: rgba(83, 100, 255, 1.00);
+  /* The default color for text or elements that appear on top of accent colored elements. */
+  --accent-foreground: rgba(255, 255, 255, 1.00);
+  /* The color used for background in destructive actions, such as delete buttons or error messages. */
+  --destructive: rgba(241, 79, 93, 1.00);
+  /* The default color for text or elements that appear on top of destructive colored elements. */
+  --destructive-foreground: rgba(255, 255, 255, 1.00);
+  /* The default border color for elements such as inputs, buttons, and other containers. */
+  --border: rgba(128, 134, 148, 0.12);
+  /* The default background color for input fields once the text has been filled. Should be either transparent or match the input-background. */
+  --input: rgba(246, 247, 255, 0.04);
+  /* The default background color for input fields, text areas, and other input elements. */
+  --input-background: rgba(246, 247, 255, 0.04);
+  /* The color for focus rings, outlines, and other focus indicators. */
+  --ring: rgba(71, 99, 240, 1.00);
+  /* Shadow for small elevations, such as cards or modals. Other elevations should be relative to this. */
+  --elevation-sm: 0px 1px 1px 0px rgba(0,0,0,0.12), 0px 1px 1px 0px rgba(0,0,0,0.24);
+  /* The color for chart elements, such as a bar or line in a chart. */
+  --chart-1: rgba(102, 255, 229, 1.00);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-2: rgba(102, 204, 255, 1.00);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-3: rgba(10, 153, 87, 1.00);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-4: rgba(255, 169, 49, 1.00);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-5: rgba(219, 51, 219, 1.00);
+  /* The default border radius for elements such as buttons, tooltip, and other containers. */
+  --radius: 8px;
+  /* The larger border radius for cards and modal containers. */
+  --radius-card: 16px;
+  /* The background color for sidebars, navigation menus, and other persistent elements. */
+  --sidebar: rgba(15, 15, 17, 1.00);
+  /* The default color for text or elements that appear on top of sidebars, navigation menus, and other persistent elements. */
+  --sidebar-foreground: rgba(246, 247, 255, 1.00);
+  /* The primary color used for buttons, links, and other interactive elements in sidebars and navigation menus. */
+  --sidebar-primary: rgba(71, 99, 240, 1.00);
+  /* The default color for text or elements that appear on top of primary colored elements in sidebars and navigation menus. */
+  --sidebar-primary-foreground: rgba(255, 255, 255, 1.00);
+  /* The accent color used for highlights, links, and other interactive elements in sidebars and navigation menus. */
+  --sidebar-accent: rgba(83, 100, 255, 1.00);
+  /* The default color for text or elements that appear on top of accent colored elements in sidebars and navigation menus. */
+  --sidebar-accent-foreground: rgba(255, 255, 255, 1.00);
+  /* The default border color for elements in sidebars and navigation menus. */
+  --sidebar-border: rgba(128, 134, 148, 0.12);
+  /* The default color for focus rings, outlines, and other focus indicators in sidebars and navigation menus. */
+  --sidebar-ring: rgba(71, 99, 240, 1.00);
+  /* The color used for warning backgrounds and warning states. */
+  --warning: rgba(255, 204, 74, 1.00);
+  /* The default color for text or elements that appear on top of warning colored elements. */
+  --warning-foreground: rgba(0, 0, 0, 1.00);
+  /* The color used for success backgrounds and success states. */
+  --success: rgba(0, 159, 112, 1.00);
+  /* The default color for text or elements that appear on top of success colored elements. */
+  --success-foreground: rgba(255, 255, 255, 1.00);
+  /* The default font weight for medium text. */
+  --font-weight-medium: 500;
+  /* The default font weight for normal text. */
+  --font-weight-normal: 400;
+}
