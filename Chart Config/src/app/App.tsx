@@ -15,9 +15,9 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     id: "buy-order",
     label: "Buy Order",
     price: 43200,
-    color: "#009F70",
-    labelColor: "#009F70",
-    labelTextColor: "#FFFFFF",
+    color: "#009F70",        // --positive-bg-default
+    labelColor: "#009F70",   // --positive-bg-default
+    labelTextColor: "#FFFFFF", // --positive-over
     lineWidth: 2,
     lineStyle: 2,
     visible: true,
@@ -26,9 +26,9 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     id: "take-profit",
     label: "Take Profit",
     price: 47500,
-    color: "#66FFE5",
-    labelColor: "#66FFE5",
-    labelTextColor: "#000000",
+    color: "#66FFE5",        // --chart-lines-line-1
+    labelColor: "#66FFE5",   // --chart-lines-line-1
+    labelTextColor: "#000000", // --warning-over
     lineWidth: 1,
     lineStyle: 2,
     visible: true,
@@ -37,9 +37,9 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     id: "stop-loss",
     label: "Stop Loss",
     price: 41800,
-    color: "#F14F5D",
-    labelColor: "#F14F5D",
-    labelTextColor: "#FFFFFF",
+    color: "#F14F5D",        // --negative-bg-default
+    labelColor: "#F14F5D",   // --negative-bg-default
+    labelTextColor: "#FFFFFF", // --negative-over
     lineWidth: 1,
     lineStyle: 2,
     visible: true,
@@ -48,9 +48,9 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     id: "liquidation",
     label: "Liquidation",
     price: 39500,
-    color: "#FFCC4A",
-    labelColor: "#FFCC4A",
-    labelTextColor: "#000000",
+    color: "#FFCC4A",        // --warning-bg-default
+    labelColor: "#FFCC4A",   // --warning-bg-default
+    labelTextColor: "#000000", // --warning-over
     lineWidth: 0.5,
     lineStyle: 1,
     visible: true,
@@ -103,9 +103,9 @@ export default function App() {
       id,
       label: `Level ${nextCustomId - 1}`,
       price: Math.round(lastPrice + (Math.random() - 0.5) * 2000),
-      color: "#5364FF",
-      labelColor: "#5364FF",
-      labelTextColor: "#FFFFFF",
+      color: "#5364FF",        // --accent-text-and-icons
+      labelColor: "#5364FF",   // --accent-text-and-icons
+      labelTextColor: "#FFFFFF", // --accent-over
       lineWidth: 1,
       lineStyle: 2,
       visible: true,

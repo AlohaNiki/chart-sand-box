@@ -69,6 +69,16 @@ interface ChartWidgetProps {
 /** Snap distance in pixels for detecting price line hover/drag */
 const SNAP_PX = 10;
 
+/** Read a resolved CSS variable value from :root */
+function css(varName: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+/** Build rgba() string using an RGB CSS variable + custom alpha */
+function rgba(rgbVar: string, alpha: number): string {
+  return `rgba(${css(rgbVar)}, ${alpha})`;
+}
+
 export function ChartWidget({
   priceLines,
   onPriceLineDrag,
@@ -101,30 +111,30 @@ export function ChartWidget({
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "rgba(246, 247, 255, 0.50)",
+        textColor: css("--contrast-secondary"),           // --contrast-secondary
         fontFamily: "'Inter Display', sans-serif",
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: "rgba(128, 134, 148, 0.12)" },
-        horzLines: { color: "rgba(128, 134, 148, 0.12)" },
+        vertLines: { color: css("--border") },            // --border
+        horzLines: { color: css("--border") },            // --border
       },
       crosshair: {
         vertLine: {
-          color: "rgba(71, 99, 240, 0.4)",
-          labelBackgroundColor: "rgba(71, 99, 240, 1)",
+          color: rgba("--accent-bg-default-rgb", 0.4),   // --accent-bg-default @ 40%
+          labelBackgroundColor: css("--accent-bg-default"), // --accent-bg-default
         },
         horzLine: {
-          color: "rgba(71, 99, 240, 0.4)",
-          labelBackgroundColor: "rgba(71, 99, 240, 1)",
+          color: rgba("--accent-bg-default-rgb", 0.4),   // --accent-bg-default @ 40%
+          labelBackgroundColor: css("--accent-bg-default"), // --accent-bg-default
         },
       },
       rightPriceScale: {
-        borderColor: "rgba(128, 134, 148, 0.12)",
+        borderColor: css("--border"),                     // --border
         scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       timeScale: {
-        borderColor: "rgba(128, 134, 148, 0.12)",
+        borderColor: css("--border"),                     // --border
         timeVisible: false,
       },
       width: container.clientWidth,
@@ -132,12 +142,12 @@ export function ChartWidget({
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "rgba(0, 159, 112, 1)",
-      downColor: "rgba(241, 79, 93, 1)",
-      borderUpColor: "rgba(0, 159, 112, 1)",
-      borderDownColor: "rgba(241, 79, 93, 1)",
-      wickUpColor: "rgba(0, 159, 112, 0.6)",
-      wickDownColor: "rgba(241, 79, 93, 0.6)",
+      upColor: css("--positive-bg-default"),              // --positive-bg-default
+      downColor: css("--negative-bg-default"),            // --negative-bg-default
+      borderUpColor: css("--positive-bg-default"),        // --positive-bg-default
+      borderDownColor: css("--negative-bg-default"),      // --negative-bg-default
+      wickUpColor: rgba("--positive-bg-default-rgb", 0.6),   // --positive-bg-default @ 60%
+      wickDownColor: rgba("--negative-bg-default-rgb", 0.6), // --negative-bg-default @ 60%
     });
 
     series.setData(mockData);

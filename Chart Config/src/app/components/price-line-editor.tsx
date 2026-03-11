@@ -16,16 +16,16 @@ import type { PriceLineConfig } from "./chart-widget";
 const ITEM_TYPE = "PRICE_LINE";
 
 const COLOR_PRESETS = [
-  "#009F70",
-  "#66FFE5",
-  "#F14F5D",
-  "#FFCC4A",
-  "#5364FF",
-  "#FF6B35",
-  "#A855F7",
-  "#EC4899",
-  "#8B95A5",
-  "#14B8A6",
+  "#009F70", // --positive-bg-default
+  "#66FFE5", // --chart-lines-line-1
+  "#F14F5D", // --negative-bg-default
+  "#FFCC4A", // --warning-bg-default
+  "#5364FF", // --accent-text-and-icons
+  "#EB7047", // --const-7-peach
+  "#776BF8", // --const-9-violet
+  "#DB33DB", // --const-5-pink
+  "#009FA3", // --const-6-cyan
+  "#4C94FF", // --const-4-blue
 ];
 
 const LINE_WIDTH_OPTIONS = [0.5, 1, 2, 3, 4];
