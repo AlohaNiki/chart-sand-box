@@ -2,3 +2,14 @@
 @source '../**/*.{js,ts,jsx,tsx}';
 
 @import 'tw-animate-css';
+
+/* Map CSS custom properties into Tailwind v4 theme so utility classes resolve correctly */
+@theme inline {
+  --color-border: var(--border);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+}
