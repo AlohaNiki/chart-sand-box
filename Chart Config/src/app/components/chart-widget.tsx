@@ -12,39 +12,33 @@ import {
   type PriceLineOptions,
 } from "lightweight-charts";
 
-// Generate mock candlestick data
-function generateMockData(): CandlestickData<Time>[] {
-  const data: CandlestickData<Time>[] = [];
-  let basePrice = 42000;
-  const startDate = new Date("2025-12-01");
+// ── Binance data ──────────────────────────────────────────────────────────────
 
-  for (let i = 0; i < 60; i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
+const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
+type Interval = (typeof INTERVALS)[number];
 
-    const dateStr = date.toISOString().split("T")[0] as unknown as Time;
-    const volatility = 800 + Math.random() * 1200;
-    const direction = Math.random() > 0.48 ? 1 : -1;
-    const change = direction * (Math.random() * volatility);
+const INTERVAL_STORAGE_KEY = "chartConfig_interval";
 
-    const open = basePrice;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * 500;
-    const low = Math.min(open, close) - Math.random() * 500;
-
-    data.push({
-      time: dateStr,
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      close: Math.round(close * 100) / 100,
-    });
-
-    basePrice = close + (Math.random() - 0.5) * 200;
-  }
-
-  return data;
+async function fetchKlines(
+  interval: Interval,
+  signal: AbortSignal
+): Promise<CandlestickData<Time>[]> {
+  const res = await fetch(
+    `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=200`,
+    { signal }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data: unknown[][] = await res.json();
+  return data.map((k) => ({
+    time: Math.floor((k[0] as number) / 1000) as Time,
+    open: parseFloat(k[1] as string),
+    high: parseFloat(k[2] as string),
+    low: parseFloat(k[3] as string),
+    close: parseFloat(k[4] as string),
+  }));
 }
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PriceLineConfig {
   id: string;
@@ -67,6 +61,8 @@ interface ChartWidgetProps {
   theme?: "dark" | "light";
 }
 
+type WsStatus = "connecting" | "live" | "offline";
+
 /** Snap distance in pixels for detecting price line hover/drag */
 const SNAP_PX = 10;
 
@@ -80,21 +76,34 @@ function rgba(rgbVar: string, alpha: number): string {
   return `rgba(${css(rgbVar)}, ${alpha})`;
 }
 
-export function ChartWidget({
-  priceLines,
-  onPriceLineDrag,
-  theme,
-}: ChartWidgetProps) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
-  const [mockData] = useState(() => generateMockData());
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Keep mutable refs for callbacks and config so event listeners always see latest values
+  // Keep mutable refs for callbacks so event listeners always see latest values
   const priceLinesConfigRef = useRef<PriceLineConfig[]>(priceLines);
   const onPriceLineDragRef = useRef(onPriceLineDrag);
   const draggingIdRef = useRef<string | null>(null);
+
+  // Interval state (persisted in localStorage)
+  const [interval, setInterval] = useState<Interval>(() => {
+    try {
+      const stored = localStorage.getItem(INTERVAL_STORAGE_KEY);
+      if (stored && (INTERVALS as readonly string[]).includes(stored)) {
+        return stored as Interval;
+      }
+    } catch {}
+    return "1d";
+  });
+
+  const [chartReady, setChartReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [wsStatus, setWsStatus] = useState<WsStatus>("connecting");
 
   useEffect(() => {
     priceLinesConfigRef.current = priceLines;
@@ -104,39 +113,43 @@ export function ChartWidget({
     onPriceLineDragRef.current = onPriceLineDrag;
   }, [onPriceLineDrag]);
 
-  // Initialize chart + drag handling
+  // ── Save interval to localStorage ─────────────────────────────────────────
+  useEffect(() => {
+    try { localStorage.setItem(INTERVAL_STORAGE_KEY, interval); } catch {}
+  }, [interval]);
+
+  // ── Initialize chart + drag handling (runs once) ──────────────────────────
   useEffect(() => {
     if (!chartContainerRef.current) return;
-
     const container = chartContainerRef.current;
 
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: css("--contrast-secondary"),           // --contrast-secondary
+        textColor: css("--contrast-secondary"),
         fontFamily: "'Inter Display', sans-serif",
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: css("--border") },            // --border
-        horzLines: { color: css("--border") },            // --border
+        vertLines: { color: css("--border") },
+        horzLines: { color: css("--border") },
       },
       crosshair: {
         vertLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),   // --accent-bg-default @ 40%
-          labelBackgroundColor: css("--accent-bg-default"), // --accent-bg-default
+          color: rgba("--accent-bg-default-rgb", 0.4),
+          labelBackgroundColor: css("--accent-bg-default"),
         },
         horzLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),   // --accent-bg-default @ 40%
-          labelBackgroundColor: css("--accent-bg-default"), // --accent-bg-default
+          color: rgba("--accent-bg-default-rgb", 0.4),
+          labelBackgroundColor: css("--accent-bg-default"),
         },
       },
       rightPriceScale: {
-        borderColor: css("--border"),                     // --border
+        borderColor: css("--border"),
         scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       timeScale: {
-        borderColor: css("--border"),                     // --border
+        borderColor: css("--border"),
         timeVisible: false,
       },
       width: container.clientWidth,
@@ -144,29 +157,24 @@ export function ChartWidget({
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: css("--positive-bg-default"),              // --positive-bg-default
-      downColor: css("--negative-bg-default"),            // --negative-bg-default
-      borderUpColor: css("--positive-bg-default"),        // --positive-bg-default
-      borderDownColor: css("--negative-bg-default"),      // --negative-bg-default
-      wickUpColor: rgba("--positive-bg-default-rgb", 0.6),   // --positive-bg-default @ 60%
-      wickDownColor: rgba("--negative-bg-default-rgb", 0.6), // --negative-bg-default @ 60%
+      upColor: css("--positive-bg-default"),
+      downColor: css("--negative-bg-default"),
+      borderUpColor: css("--positive-bg-default"),
+      borderDownColor: css("--negative-bg-default"),
+      wickUpColor: rgba("--positive-bg-default-rgb", 0.6),
+      wickDownColor: rgba("--negative-bg-default-rgb", 0.6),
     });
-
-    series.setData(mockData);
-    chart.timeScale().fitContent();
 
     chartRef.current = chart;
     seriesRef.current = series;
+    setChartReady(true);
 
     // --- Drag-on-chart logic ---
-
-    /** Find the nearest visible price line within SNAP_PX of clientY */
     const findNearestLine = (clientY: number): string | null => {
       const rect = container.getBoundingClientRect();
       const y = clientY - rect.top;
       let closestId: string | null = null;
       let closestDist = Infinity;
-
       for (const config of priceLinesConfigRef.current) {
         if (!config.visible) continue;
         const coord = series.priceToCoordinate(config.price);
@@ -181,11 +189,9 @@ export function ChartWidget({
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return; // left click only
+      if (e.button !== 0) return;
       const nearId = findNearestLine(e.clientY);
       if (!nearId) return;
-
-      // Prevent chart from panning / scaling
       e.preventDefault();
       e.stopPropagation();
       draggingIdRef.current = nearId;
@@ -196,7 +202,6 @@ export function ChartWidget({
 
     const onPointerMove = (e: PointerEvent) => {
       if (draggingIdRef.current) {
-        // Dragging — convert Y to price
         const rect = container.getBoundingClientRect();
         const y = e.clientY - rect.top;
         const price = series.coordinateToPrice(y);
@@ -207,7 +212,6 @@ export function ChartWidget({
           );
         }
       } else {
-        // Hover — show resize cursor when near a line
         const nearId = findNearestLine(e.clientY);
         container.style.cursor = nearId ? "ns-resize" : "";
       }
@@ -216,25 +220,17 @@ export function ChartWidget({
     const onPointerUp = (e: PointerEvent) => {
       if (draggingIdRef.current) {
         draggingIdRef.current = null;
-        try {
-          container.releasePointerCapture(e.pointerId);
-        } catch {
-          /* pointerId might already be released */
-        }
+        try { container.releasePointerCapture(e.pointerId); } catch {}
         chart.applyOptions({ handleScroll: true, handleScale: true });
         container.style.cursor = "";
       }
     };
 
-    // Use capture phase so we intercept before chart's internal handlers
-    container.addEventListener("pointerdown", onPointerDown, {
-      capture: true,
-    });
+    container.addEventListener("pointerdown", onPointerDown, { capture: true });
     container.addEventListener("pointermove", onPointerMove);
     container.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointerup", onPointerUp);
 
-    // Handle resize
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -244,9 +240,7 @@ export function ChartWidget({
     resizeObserver.observe(container);
 
     return () => {
-      container.removeEventListener("pointerdown", onPointerDown, {
-        capture: true,
-      });
+      container.removeEventListener("pointerdown", onPointerDown, { capture: true });
       container.removeEventListener("pointermove", onPointerMove);
       container.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointerup", onPointerUp);
@@ -255,10 +249,93 @@ export function ChartWidget({
       chartRef.current = null;
       seriesRef.current = null;
       priceLinesRef.current.clear();
+      setChartReady(false);
     };
   }, []);
 
-  // Update chart colors when theme changes
+  // ── Fetch historical data + open WebSocket (re-runs on interval change) ───
+  useEffect(() => {
+    if (!chartReady || !seriesRef.current || !chartRef.current) return;
+
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+
+    setIsLoading(true);
+    setWsStatus("connecting");
+
+    // Close previous WebSocket
+    wsRef.current?.close();
+    wsRef.current = null;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    // Update time/seconds visibility for this interval
+    chart.applyOptions({
+      timeScale: {
+        timeVisible: interval !== "1d",
+        secondsVisible: interval === "1m",
+      },
+    });
+
+    (async () => {
+      try {
+        const candles = await fetchKlines(interval, controller.signal);
+        if (cancelled) return;
+
+        series.setData(candles);
+        chart.timeScale().fitContent();
+        setIsLoading(false);
+
+        // Live WebSocket
+        const ws = new WebSocket(
+          `wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`
+        );
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          if (!cancelled) setWsStatus("live");
+        };
+
+        ws.onmessage = (event) => {
+          if (cancelled) return;
+          try {
+            const msg = JSON.parse(event.data as string);
+            const k = msg.k;
+            seriesRef.current?.update({
+              time: Math.floor((k.t as number) / 1000) as Time,
+              open: parseFloat(k.o as string),
+              high: parseFloat(k.h as string),
+              low: parseFloat(k.l as string),
+              close: parseFloat(k.c as string),
+            });
+          } catch {}
+        };
+
+        ws.onerror = () => {
+          if (!cancelled) setWsStatus("offline");
+        };
+
+        ws.onclose = () => {
+          if (!cancelled) setWsStatus("offline");
+        };
+      } catch {
+        if (!cancelled) {
+          setIsLoading(false);
+          setWsStatus("offline");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [interval, chartReady]);
+
+  // ── Update chart colors when theme changes ────────────────────────────────
   useEffect(() => {
     const chart = chartRef.current;
     const series = seriesRef.current;
@@ -294,7 +371,7 @@ export function ChartWidget({
     });
   }, [theme]);
 
-  // Update price lines
+  // ── Sync price lines with chart ───────────────────────────────────────────
   useEffect(() => {
     const series = seriesRef.current;
     if (!series) return;
@@ -302,7 +379,6 @@ export function ChartWidget({
     const existingLines = priceLinesRef.current;
     const currentIds = new Set(priceLines.map((pl) => pl.id));
 
-    // Remove lines that no longer exist
     for (const [id, line] of existingLines) {
       if (!currentIds.has(id)) {
         series.removePriceLine(line);
@@ -310,7 +386,6 @@ export function ChartWidget({
       }
     }
 
-    // Add or update lines
     for (const config of priceLines) {
       if (!config.visible) {
         const existing = existingLines.get(config.id);
@@ -342,11 +417,81 @@ export function ChartWidget({
     }
   }, [priceLines]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
-      ref={chartContainerRef}
-      className="w-full h-full min-h-[400px]"
+      className="relative w-full h-full min-h-[400px]"
       style={{ fontFamily: "'Inter Display', sans-serif" }}
-    />
+    >
+      {/* Chart canvas */}
+      <div ref={chartContainerRef} className="w-full h-full" />
+
+      {/* Interval selector — top left */}
+      <div
+        className="absolute top-[8px] left-[8px] flex items-center gap-[2px] z-10 rounded-[var(--radius-sm)] p-[2px]"
+        style={{ background: "var(--secondary)" }}
+      >
+        {INTERVALS.map((iv) => (
+          <button
+            key={iv}
+            onClick={() => setInterval(iv)}
+            className="px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+            style={{
+              fontSize: "var(--text-label)",
+              background: interval === iv ? "var(--card)" : "transparent",
+              color: interval === iv ? "var(--foreground)" : "var(--muted-foreground)",
+              fontWeight: interval === iv ? "600" : "400",
+            }}
+          >
+            {iv.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* Live status indicator — top right */}
+      <div
+        className="absolute top-[8px] right-[8px] flex items-center gap-[5px] z-10 px-[8px] py-[3px] rounded-[var(--radius-sm)]"
+        style={{
+          fontSize: "var(--text-label)",
+          background: "var(--secondary)",
+          color:
+            wsStatus === "live"
+              ? "var(--positive-bg-default)"
+              : wsStatus === "connecting"
+              ? "var(--muted-foreground)"
+              : "var(--negative-bg-default)",
+        }}
+      >
+        <span
+          className={`inline-block w-[6px] h-[6px] rounded-full shrink-0 ${wsStatus === "live" ? "animate-pulse" : ""}`}
+          style={{
+            background:
+              wsStatus === "live"
+                ? "var(--positive-bg-default)"
+                : wsStatus === "connecting"
+                ? "var(--muted-foreground)"
+                : "var(--negative-bg-default)",
+          }}
+        />
+        {wsStatus === "live" ? "LIVE" : wsStatus === "connecting" ? "..." : "OFFLINE"}
+      </div>
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div
+          className="absolute inset-0 flex items-center justify-center z-20"
+          style={{ background: "rgba(0,0,0,0.12)" }}
+        >
+          <span
+            style={{
+              color: "var(--muted-foreground)",
+              fontSize: "var(--text-label)",
+            }}
+          >
+            Loading…
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
