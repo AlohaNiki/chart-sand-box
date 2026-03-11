@@ -286,11 +286,11 @@ export default function App() {
         </header>
 
         {/* Main content */}
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden overflow-y-auto">
           {/* Chart area */}
-          <div className="flex-1 min-w-0 min-h-0 p-[8px]">
+          <div className="md:flex-1 min-w-0 min-h-0 p-[8px] shrink-0">
             <div
-              className="w-full h-full rounded-[var(--radius-card)] overflow-hidden border border-border"
+              className="w-full h-[400px] md:h-full rounded-[var(--radius-card)] overflow-hidden border border-border"
               style={{ background: "var(--card)" }}
             >
               <ChartWidget
