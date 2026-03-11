@@ -12,54 +12,68 @@ import {
   Moon,
 } from "lucide-react";
 
-const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
-  {
-    id: "buy-order",
-    label: "Buy Order",
-    price: 43200,
-    color: "#009F70",        // --positive-bg-default
-    labelColor: "#009F70",   // --positive-bg-default
-    labelTextColor: "#FFFFFF", // --positive-over
-    lineWidth: 2,
-    lineStyle: 2,
-    visible: true,
-  },
-  {
-    id: "take-profit",
-    label: "Take Profit",
-    price: 47500,
-    color: "#66FFE5",        // --chart-lines-line-1
-    labelColor: "#66FFE5",   // --chart-lines-line-1
-    labelTextColor: "#000000", // --warning-over
-    lineWidth: 1,
-    lineStyle: 2,
-    visible: true,
-  },
-  {
-    id: "stop-loss",
-    label: "Stop Loss",
-    price: 41800,
-    color: "#F14F5D",        // --negative-bg-default
-    labelColor: "#F14F5D",   // --negative-bg-default
-    labelTextColor: "#FFFFFF", // --negative-over
-    lineWidth: 1,
-    lineStyle: 2,
-    visible: true,
-  },
-  {
-    id: "liquidation",
-    label: "Liquidation",
-    price: 39500,
-    color: "#FFCC4A",        // --warning-bg-default
-    labelColor: "#FFCC4A",   // --warning-bg-default
-    labelTextColor: "#000000", // --warning-over
-    lineWidth: 0.5,
-    lineStyle: 1,
-    visible: true,
-  },
-];
+/** Build default price lines relative to a live BTC price */
+function makeDefaultLines(base: number): PriceLineConfig[] {
+  const r = (n: number) => Math.round(n);
+  return [
+    {
+      id: "buy-order",
+      label: "Buy Order",
+      price: r(base),
+      color: "#009F70",        // --positive-bg-default
+      labelColor: "#009F70",
+      labelTextColor: "#FFFFFF",
+      lineWidth: 2,
+      lineStyle: 2,
+      visible: true,
+    },
+    {
+      id: "take-profit",
+      label: "Take Profit",
+      price: r(base * 1.05),   // +5 %
+      color: "#66FFE5",        // --chart-lines-line-1
+      labelColor: "#66FFE5",
+      labelTextColor: "#000000",
+      lineWidth: 1,
+      lineStyle: 2,
+      visible: true,
+    },
+    {
+      id: "stop-loss",
+      label: "Stop Loss",
+      price: r(base * 0.97),   // −3 %
+      color: "#F14F5D",        // --negative-bg-default
+      labelColor: "#F14F5D",
+      labelTextColor: "#FFFFFF",
+      lineWidth: 1,
+      lineStyle: 2,
+      visible: true,
+    },
+    {
+      id: "liquidation",
+      label: "Liquidation",
+      price: r(base * 0.90),   // −10 %
+      color: "#FFCC4A",        // --warning-bg-default
+      labelColor: "#FFCC4A",
+      labelTextColor: "#000000",
+      lineWidth: 0.5,
+      lineStyle: 1,
+      visible: true,
+    },
+  ];
+}
 
-const BUILT_IN_IDS = new Set(DEFAULT_PRICE_LINES.map((pl) => pl.id));
+/** Fetch current BTC/USDT price from Binance */
+async function fetchCurrentPrice(): Promise<number> {
+  const res = await fetch(
+    "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+  );
+  const data = await res.json();
+  return parseFloat(data.price);
+}
+
+// Static fallback used only for localStorage validation shape
+const BUILT_IN_IDS = new Set(["buy-order", "take-profit", "stop-loss", "liquidation"]);
 
 const STORAGE_KEYS = {
   theme: "chartConfig_theme",
@@ -104,19 +118,27 @@ export default function App() {
   const [priceLines, setPriceLines] = useState<PriceLineConfig[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.priceLines);
-      if (!stored) return DEFAULT_PRICE_LINES;
+      if (!stored) return makeDefaultLines(83000); // temp placeholder, overwritten on mount
       const parsed = JSON.parse(stored);
-      if (!Array.isArray(parsed)) return DEFAULT_PRICE_LINES;
+      if (!Array.isArray(parsed)) return makeDefaultLines(83000);
       const validated = parsed.filter(isValidPriceLine);
-      return validated.length > 0 ? validated : DEFAULT_PRICE_LINES;
+      return validated.length > 0 ? validated : makeDefaultLines(83000);
     } catch {
-      return DEFAULT_PRICE_LINES;
+      return makeDefaultLines(83000);
     }
   });
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEYS.priceLines, JSON.stringify(priceLines)); } catch {}
   }, [priceLines]);
+
+  // On first visit (no localStorage), snap defaults to live BTC price
+  useEffect(() => {
+    if (localStorage.getItem(STORAGE_KEYS.priceLines)) return;
+    fetchCurrentPrice()
+      .then((price) => { if (price > 0) setPriceLines(makeDefaultLines(price)); })
+      .catch(() => {});
+  }, []);
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -130,8 +152,11 @@ export default function App() {
   }, []);
 
   const handleReset = () => {
-    setPriceLines(DEFAULT_PRICE_LINES);
     setImportMessage(null);
+    try { localStorage.removeItem(STORAGE_KEYS.priceLines); } catch {}
+    fetchCurrentPrice()
+      .then((price) => setPriceLines(makeDefaultLines(price > 0 ? price : 83000)))
+      .catch(() => setPriceLines(makeDefaultLines(83000)));
   };
 
   const handleAddLevel = () => {
