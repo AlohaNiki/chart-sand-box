@@ -61,6 +61,11 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
 
 const BUILT_IN_IDS = new Set(DEFAULT_PRICE_LINES.map((pl) => pl.id));
 
+const STORAGE_KEYS = {
+  theme: "chartConfig_theme",
+  priceLines: "chartConfig_priceLines",
+} as const;
+
 let nextCustomId = 1;
 
 function isValidPriceLine(obj: unknown): obj is PriceLineConfig {
@@ -79,16 +84,39 @@ function isValidPriceLine(obj: unknown): obj is PriceLineConfig {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // ── Persist theme in localStorage ────────────────────────────────────────
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.theme);
+      return stored === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
 
-  // Apply theme class to <html> so CSS variables and chart's getComputedStyle both work
   useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.theme, theme); } catch {}
     document.documentElement.classList.toggle("light", theme === "light");
     return () => document.documentElement.classList.remove("light");
   }, [theme]);
 
-  const [priceLines, setPriceLines] =
-    useState<PriceLineConfig[]>(DEFAULT_PRICE_LINES);
+  // ── Persist priceLines in localStorage ───────────────────────────────────
+  const [priceLines, setPriceLines] = useState<PriceLineConfig[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.priceLines);
+      if (!stored) return DEFAULT_PRICE_LINES;
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return DEFAULT_PRICE_LINES;
+      const validated = parsed.filter(isValidPriceLine);
+      return validated.length > 0 ? validated : DEFAULT_PRICE_LINES;
+    } catch {
+      return DEFAULT_PRICE_LINES;
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.priceLines, JSON.stringify(priceLines)); } catch {}
+  }, [priceLines]);
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
