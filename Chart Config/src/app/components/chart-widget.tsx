@@ -64,6 +64,7 @@ interface ChartWidgetProps {
   priceLines: PriceLineConfig[];
   /** Called when user drags a price line on the chart */
   onPriceLineDrag?: (id: string, newPrice: number) => void;
+  theme?: "dark" | "light";
 }
 
 /** Snap distance in pixels for detecting price line hover/drag */
@@ -82,6 +83,7 @@ function rgba(rgbVar: string, alpha: number): string {
 export function ChartWidget({
   priceLines,
   onPriceLineDrag,
+  theme,
 }: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -255,6 +257,42 @@ export function ChartWidget({
       priceLinesRef.current.clear();
     };
   }, []);
+
+  // Update chart colors when theme changes
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return;
+
+    chart.applyOptions({
+      layout: { textColor: css("--contrast-secondary") },
+      grid: {
+        vertLines: { color: css("--border") },
+        horzLines: { color: css("--border") },
+      },
+      crosshair: {
+        vertLine: {
+          color: rgba("--accent-bg-default-rgb", 0.4),
+          labelBackgroundColor: css("--accent-bg-default"),
+        },
+        horzLine: {
+          color: rgba("--accent-bg-default-rgb", 0.4),
+          labelBackgroundColor: css("--accent-bg-default"),
+        },
+      },
+      rightPriceScale: { borderColor: css("--border") },
+      timeScale: { borderColor: css("--border") },
+    });
+
+    series.applyOptions({
+      upColor: css("--positive-bg-default"),
+      downColor: css("--negative-bg-default"),
+      borderUpColor: css("--positive-bg-default"),
+      borderDownColor: css("--negative-bg-default"),
+      wickUpColor: rgba("--positive-bg-default-rgb", 0.6),
+      wickDownColor: rgba("--negative-bg-default-rgb", 0.6),
+    });
+  }, [theme]);
 
   // Update price lines
   useEffect(() => {

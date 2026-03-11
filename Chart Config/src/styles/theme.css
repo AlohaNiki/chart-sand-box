@@ -225,3 +225,162 @@
   --success: var(--positive-bg-default);
   --success-foreground: var(--positive-over);
 }
+
+/* ─── Light Theme ─────────────────────────────────────────────────────────── */
+.light {
+  /* Surface */
+  --surface-canvas-rgb: 248, 248, 248;
+  --surface-canvas: rgba(248, 248, 248, 1);
+  --surface-elevation-1-rgb: 255, 255, 255;
+  --surface-elevation-1: rgba(255, 255, 255, 1);
+  --surface-elevation-2-rgb: 250, 250, 250;
+  --surface-elevation-2: rgba(250, 250, 250, 1);
+  --surface-elevation-3-rgb: 245, 245, 245;
+  --surface-elevation-3: rgba(245, 245, 245, 1);
+  --surface-overlay-rgb: 14, 14, 16;
+  --surface-overlay: rgba(14, 14, 16, 0.4);
+
+  /* Shadow */
+  --shadow-elevation-0-rgb: 245, 245, 245;
+  --shadow-elevation-0: rgba(245, 245, 245, 1);
+  --shadow-elevation-1-rgb: 245, 245, 245;
+  --shadow-elevation-1: rgba(245, 245, 245, 1);
+  --shadow-elevation-2-rgb: 245, 245, 245;
+  --shadow-elevation-2: rgba(245, 245, 245, 1);
+  --shadow-elevation-3-rgb: 245, 245, 245;
+  --shadow-elevation-3: rgba(245, 245, 245, 1);
+
+  /* Contrast */
+  --contrast-primary-rgb: 22, 26, 64;
+  --contrast-primary: rgba(22, 26, 64, 1);
+  --contrast-secondary-rgb: 22, 26, 64;
+  --contrast-secondary: rgba(22, 26, 64, 0.6);
+  --contrast-tertiary-rgb: 22, 26, 64;
+  --contrast-tertiary: rgba(22, 26, 64, 0.3);
+  --contrast-quaternary-rgb: 22, 26, 64;
+  --contrast-quaternary: rgba(22, 26, 64, 0.07);
+
+  /* Control */
+  --control-border-rgb: 90, 97, 131;
+  --control-border: rgba(90, 97, 131, 0.02);
+  --control-bg-default-rgb: 90, 97, 131;
+  --control-bg-default: rgba(90, 97, 131, 0.08);
+  --control-bg-hover-rgb: 90, 97, 131;
+  --control-bg-hover: rgba(90, 97, 131, 0.12);
+  --control-bg-active-rgb: 90, 97, 131;
+  --control-bg-active: rgba(90, 97, 131, 0.15);
+  --control-bg-inactive-rgb: 40, 40, 42;
+  --control-bg-inactive: rgba(40, 40, 42, 0.08);
+
+  /* Card */
+  --card-border-rgb: 90, 97, 131;
+  --card-border: rgba(90, 97, 131, 0.1);
+  --card-bg-default-rgb: 255, 255, 255;
+  --card-bg-default: rgba(255, 255, 255, 1);
+  --card-bg-hover-rgb: 90, 97, 131;
+  --card-bg-hover: rgba(90, 97, 131, 0.07);
+  --card-bg-active-rgb: 90, 97, 131;
+  --card-bg-active: rgba(90, 97, 131, 0.1);
+  --card-bg-inactive-rgb: 40, 40, 42;
+  --card-bg-inactive: rgba(40, 40, 42, 0.08);
+
+  /* Input */
+  --input-border-rgb: 90, 97, 131;
+  --input-border: rgba(90, 97, 131, 0.25);
+  --input-bg-default-rgb: 255, 255, 255;
+  --input-bg-default: rgba(255, 255, 255, 1);
+  --input-bg-hover-rgb: 90, 97, 131;
+  --input-bg-hover: rgba(90, 97, 131, 0.1);
+  --input-bg-active-rgb: 255, 255, 255;
+  --input-bg-active: rgba(255, 255, 255, 1);
+  --input-bg-inactive-rgb: 40, 40, 42;
+  --input-bg-inactive: rgba(40, 40, 42, 0.08);
+
+  /* Accent — same as dark */
+  --accent-bg-default-rgb: 71, 99, 240;
+  --accent-bg-default: rgba(71, 99, 240, 1);
+  --accent-bg-hover-rgb: 85, 120, 241;
+  --accent-bg-hover: rgba(85, 120, 241, 1);
+  --accent-bg-active-rgb: 60, 76, 226;
+  --accent-bg-active: rgba(60, 76, 226, 1);
+  --accent-over-rgb: 255, 255, 255;
+  --accent-over: rgba(255, 255, 255, 1);
+  --accent-text-and-icons-rgb: 83, 100, 255;
+  --accent-text-and-icons: rgba(83, 100, 255, 1);
+  --accent-transparent-rgb: 70, 100, 255;
+  --accent-transparent: rgba(70, 100, 255, 0.15);
+
+  /* Positive — same as dark */
+  --positive-bg-default-rgb: 0, 159, 112;
+  --positive-bg-default: rgba(0, 159, 112, 1);
+  --positive-bg-hover-rgb: 0, 189, 132;
+  --positive-bg-hover: rgba(0, 189, 132, 1);
+  --positive-bg-active-rgb: 0, 133, 101;
+  --positive-bg-active: rgba(0, 133, 101, 1);
+  --positive-over-rgb: 255, 255, 255;
+  --positive-over: rgba(255, 255, 255, 1);
+  --positive-text-and-icons-rgb: 0, 185, 122;
+  --positive-text-and-icons: rgba(0, 185, 122, 1);
+  --positive-transparent-rgb: 0, 157, 101;
+  --positive-transparent: rgba(0, 157, 101, 0.15);
+
+  /* Negative — same as dark */
+  --negative-bg-default-rgb: 241, 79, 93;
+  --negative-bg-default: rgba(241, 79, 93, 1);
+  --negative-bg-hover-rgb: 243, 99, 112;
+  --negative-bg-hover: rgba(243, 99, 112, 1);
+  --negative-bg-active-rgb: 234, 62, 77;
+  --negative-bg-active: rgba(234, 62, 77, 1);
+  --negative-over-rgb: 255, 255, 255;
+  --negative-over: rgba(255, 255, 255, 1);
+  --negative-text-and-icons-rgb: 254, 85, 100;
+  --negative-text-and-icons: rgba(254, 85, 100, 1);
+  --negative-transparent-rgb: 233, 64, 80;
+  --negative-transparent: rgba(233, 64, 80, 0.15);
+
+  /* Warning — light values differ */
+  --warning-bg-default-rgb: 255, 169, 3;
+  --warning-bg-default: rgba(255, 169, 3, 1);
+  --warning-bg-hover-rgb: 255, 187, 56;
+  --warning-bg-hover: rgba(255, 187, 56, 1);
+  --warning-bg-active-rgb: 239, 158, 0;
+  --warning-bg-active: rgba(239, 158, 0, 1);
+  --warning-over-rgb: 0, 0, 0;
+  --warning-over: rgba(0, 0, 0, 1);
+  --warning-text-and-icons-rgb: 221, 119, 0;
+  --warning-text-and-icons: rgba(221, 119, 0, 1);
+  --warning-transparent-rgb: 255, 169, 3;
+  --warning-transparent: rgba(255, 169, 3, 0.15);
+
+  /* Chart lines */
+  --chart-lines-grid-rgb: 40, 40, 42;
+  --chart-lines-grid: rgba(40, 40, 42, 0.05);
+  --chart-lines-line-1-rgb: 41, 50, 50;
+  --chart-lines-line-1: rgba(41, 50, 50, 1);
+  --chart-lines-line-2-rgb: 41, 50, 50;
+  --chart-lines-line-2: rgba(41, 50, 50, 1);
+
+  /* Const palette — light values */
+  --const-1-green-rgb: 10, 153, 87;
+  --const-1-green: rgba(10, 153, 87, 1);
+  --const-2-mustard-rgb: 164, 139, 0;
+  --const-2-mustard: rgba(164, 139, 0, 1);
+  --const-3-orange-rgb: 250, 146, 0;
+  --const-3-orange: rgba(250, 146, 0, 1);
+  --const-4-blue-rgb: 0, 102, 255;
+  --const-4-blue: rgba(0, 102, 255, 1);
+  --const-5-pink-rgb: 219, 51, 219;
+  --const-5-pink: rgba(219, 51, 219, 1);
+  --const-6-cyan-rgb: 0, 169, 173;
+  --const-6-cyan: rgba(0, 169, 173, 1);
+  --const-7-peach-rgb: 235, 112, 71;
+  --const-7-peach: rgba(235, 112, 71, 1);
+  --const-8-red-rgb: 222, 68, 68;
+  --const-8-red: rgba(222, 68, 68, 1);
+  --const-9-violet-rgb: 131, 60, 246;
+  --const-9-violet: rgba(131, 60, 246, 1);
+
+  /* Override border for light */
+  --border: rgba(90, 97, 131, 0.15);
+  --sidebar-border: rgba(90, 97, 131, 0.15);
+}

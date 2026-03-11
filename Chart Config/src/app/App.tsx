@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
@@ -8,6 +8,8 @@ import {
   Plus,
   Download,
   Upload,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
@@ -77,6 +79,14 @@ function isValidPriceLine(obj: unknown): obj is PriceLineConfig {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Apply theme class to <html> so CSS variables and chart's getComputedStyle both work
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+    return () => document.documentElement.classList.remove("light");
+  }, [theme]);
+
   const [priceLines, setPriceLines] =
     useState<PriceLineConfig[]>(DEFAULT_PRICE_LINES);
   const [importMessage, setImportMessage] = useState<{
@@ -282,6 +292,17 @@ export default function App() {
               <RotateCcw size={14} style={{ color: "var(--muted-foreground)" }} />
               Reset
             </button>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex items-center justify-center w-[32px] h-[32px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+              style={{ color: "var(--muted-foreground)" }}
+              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark"
+                ? <Sun size={14} />
+                : <Moon size={14} />
+              }
+            </button>
           </div>
         </header>
 
@@ -296,6 +317,7 @@ export default function App() {
               <ChartWidget
                 priceLines={priceLines}
                 onPriceLineDrag={handleChartDrag}
+                theme={theme}
               />
             </div>
           </div>
