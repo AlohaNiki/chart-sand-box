@@ -415,7 +415,7 @@ export default function App() {
                     }}
                     title="Export price lines as JSON"
                   >
-                    <Download size={13} style={{ color: "var(--muted-foreground)" }} />
+                    <Upload size={13} style={{ color: "var(--muted-foreground)" }} />
                     Export
                   </button>
                   <label
@@ -427,7 +427,7 @@ export default function App() {
                     }}
                     title="Import price lines from JSON"
                   >
-                    <Upload size={13} style={{ color: "var(--muted-foreground)" }} />
+                    <Download size={13} style={{ color: "var(--muted-foreground)" }} />
                     Import
                     <input
                       ref={fileInputRef}
