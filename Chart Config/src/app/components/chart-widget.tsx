@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import {
   createChart,
   ColorType,
@@ -426,26 +427,38 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
       {/* Chart canvas */}
       <div ref={chartContainerRef} className="w-full h-full" />
 
-      {/* Interval selector — top left */}
-      <div
-        className="absolute top-[8px] left-[8px] flex items-center gap-[2px] z-10 rounded-[var(--radius-sm)] p-[2px]"
-        style={{ background: "var(--secondary)" }}
-      >
-        {INTERVALS.map((iv) => (
-          <button
-            key={iv}
-            onClick={() => setInterval(iv)}
-            className="px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
-            style={{
-              fontSize: "var(--text-label)",
-              background: interval === iv ? "var(--card)" : "transparent",
-              color: interval === iv ? "var(--foreground)" : "var(--muted-foreground)",
-              fontWeight: interval === iv ? "600" : "400",
-            }}
-          >
-            {iv.toUpperCase()}
-          </button>
-        ))}
+      {/* Interval selector + reset view — top left */}
+      <div className="absolute top-[8px] left-[8px] flex items-center gap-[4px] z-10">
+        <div
+          className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
+          style={{ background: "var(--secondary)" }}
+        >
+          {INTERVALS.map((iv) => (
+            <button
+              key={iv}
+              onClick={() => setInterval(iv)}
+              className="px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+              style={{
+                fontSize: "var(--text-label)",
+                background: interval === iv ? "var(--card)" : "transparent",
+                color: interval === iv ? "var(--foreground)" : "var(--muted-foreground)",
+                fontWeight: interval === iv ? "600" : "400",
+              }}
+            >
+              {iv.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Reset view button */}
+        <button
+          onClick={() => chartRef.current?.timeScale().fitContent()}
+          className="flex items-center justify-center w-[26px] h-[26px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+          style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}
+          title="Reset chart view"
+        >
+          <RefreshCw size={12} />
+        </button>
       </div>
 
       {/* Live status indicator — top right */}
