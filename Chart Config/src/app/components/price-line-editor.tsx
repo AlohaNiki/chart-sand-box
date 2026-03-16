@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDrag, useDrop } from "react-dnd";
 import {
   Eye,
@@ -15,18 +16,303 @@ import type { PriceLineConfig } from "./chart-widget";
 
 const ITEM_TYPE = "PRICE_LINE";
 
-const COLOR_PRESETS = [
-  "#009F70", // --positive-bg-default
-  "#66FFE5", // --chart-lines-line-1
-  "#F14F5D", // --negative-bg-default
-  "#FFCC4A", // --warning-bg-default
-  "#5364FF", // --accent-text-and-icons
-  "#EB7047", // --const-7-peach
-  "#776BF8", // --const-9-violet
-  "#DB33DB", // --const-5-pink
-  "#009FA3", // --const-6-cyan
-  "#4C94FF", // --const-4-blue
+// ── Color token groups ────────────────────────────────────────────────────────
+
+interface ColorToken {
+  varName: string;
+  label: string;
+}
+interface ColorGroup {
+  group: string;
+  tokens: ColorToken[];
+}
+
+const COLOR_GROUPS: ColorGroup[] = [
+  {
+    group: "Surface",
+    tokens: [
+      { varName: "--surface-canvas", label: "Canvas" },
+      { varName: "--surface-elevation-1", label: "Elevation-1" },
+      { varName: "--surface-elevation-2", label: "Elevation-2" },
+      { varName: "--surface-elevation-3", label: "Elevation-3" },
+      { varName: "--surface-overlay", label: "Overlay" },
+    ],
+  },
+  {
+    group: "Contrast",
+    tokens: [
+      { varName: "--contrast-primary", label: "Primary" },
+      { varName: "--contrast-secondary", label: "Secondary" },
+      { varName: "--contrast-tertiary", label: "Tertiary" },
+      { varName: "--contrast-quaternary", label: "Quaternary" },
+    ],
+  },
+  {
+    group: "Control",
+    tokens: [
+      { varName: "--control-border", label: "Border" },
+      { varName: "--control-bg-default", label: "Default" },
+      { varName: "--control-bg-hover", label: "Hover" },
+      { varName: "--control-bg-active", label: "Active" },
+      { varName: "--control-bg-inactive", label: "Inactive" },
+    ],
+  },
+  {
+    group: "Card",
+    tokens: [
+      { varName: "--card-border", label: "Border" },
+      { varName: "--card-bg-default", label: "Default" },
+      { varName: "--card-bg-hover", label: "Hover" },
+      { varName: "--card-bg-active", label: "Active" },
+      { varName: "--card-bg-inactive", label: "Inactive" },
+    ],
+  },
+  {
+    group: "Input",
+    tokens: [
+      { varName: "--input-border", label: "Border" },
+      { varName: "--input-bg-default", label: "Default" },
+      { varName: "--input-bg-hover", label: "Hover" },
+      { varName: "--input-bg-active", label: "Active" },
+      { varName: "--input-bg-inactive", label: "Inactive" },
+    ],
+  },
+  {
+    group: "Accent",
+    tokens: [
+      { varName: "--accent-bg-default", label: "Default" },
+      { varName: "--accent-bg-hover", label: "Hover" },
+      { varName: "--accent-bg-active", label: "Active" },
+      { varName: "--accent-over", label: "Over" },
+      { varName: "--accent-text-and-icons", label: "Text & Icons" },
+      { varName: "--accent-transparent", label: "Transparent" },
+    ],
+  },
+  {
+    group: "Positive",
+    tokens: [
+      { varName: "--positive-bg-default", label: "Default" },
+      { varName: "--positive-bg-hover", label: "Hover" },
+      { varName: "--positive-bg-active", label: "Active" },
+      { varName: "--positive-over", label: "Over" },
+      { varName: "--positive-text-and-icons", label: "Text & Icons" },
+      { varName: "--positive-transparent", label: "Transparent" },
+    ],
+  },
+  {
+    group: "Warning",
+    tokens: [
+      { varName: "--warning-bg-default", label: "Default" },
+      { varName: "--warning-bg-hover", label: "Hover" },
+      { varName: "--warning-bg-active", label: "Active" },
+      { varName: "--warning-over", label: "Over" },
+      { varName: "--warning-text-and-icons", label: "Text & Icons" },
+      { varName: "--warning-transparent", label: "Transparent" },
+    ],
+  },
+  {
+    group: "Negative",
+    tokens: [
+      { varName: "--negative-bg-default", label: "Default" },
+      { varName: "--negative-bg-hover", label: "Hover" },
+      { varName: "--negative-bg-active", label: "Active" },
+      { varName: "--negative-over", label: "Over" },
+      { varName: "--negative-text-and-icons", label: "Text & Icons" },
+      { varName: "--negative-transparent", label: "Transparent" },
+    ],
+  },
+  {
+    group: "Const",
+    tokens: [
+      { varName: "--const-1-green", label: "1 Green" },
+      { varName: "--const-2-mustard", label: "2 Mustard" },
+      { varName: "--const-3-orange", label: "3 Orange" },
+      { varName: "--const-4-blue", label: "4 Blue" },
+      { varName: "--const-5-pink", label: "5 Pink" },
+      { varName: "--const-6-cyan", label: "6 Cyan" },
+      { varName: "--const-7-peach", label: "7 Peach" },
+      { varName: "--const-8-red", label: "8 Red" },
+      { varName: "--const-9-violet", label: "9 Violet" },
+    ],
+  },
+  {
+    group: "Chart Lines",
+    tokens: [
+      { varName: "--chart-lines-grid", label: "Grid" },
+      { varName: "--chart-lines-line-1", label: "Line 1" },
+      { varName: "--chart-lines-line-2", label: "Line 2" },
+    ],
+  },
 ];
+
+function resolveVar(varName: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+// ── Color Token Picker ────────────────────────────────────────────────────────
+
+interface ColorTokenPickerProps {
+  label: string;
+  value: string;
+  onChange: (color: string) => void;
+}
+
+function ColorTokenPicker({ label, value, onChange }: ColorTokenPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 240,
+  });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        !buttonRef.current?.contains(e.target as Node) &&
+        !panelRef.current?.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleToggle = () => {
+    if (open) { setOpen(false); return; }
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setDropPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    setOpen(true);
+  };
+
+  // Find friendly label for current value
+  let selectedLabel: string = value;
+  for (const group of COLOR_GROUPS) {
+    for (const token of group.tokens) {
+      if (resolveVar(token.varName) === value) {
+        selectedLabel = `${group.group} / ${token.label}`;
+        break;
+      }
+    }
+    if (selectedLabel !== value) break;
+  }
+
+  return (
+    <div className="flex flex-col gap-[6px]">
+      <span
+        style={{
+          fontFamily: "'Inter Display', sans-serif",
+          fontSize: "var(--text-label)",
+          color: "var(--muted-foreground)",
+        }}
+      >
+        {label}
+      </span>
+
+      <button
+        ref={buttonRef}
+        onClick={handleToggle}
+        className="flex items-center gap-[8px] px-[8px] py-[6px] rounded-[var(--radius-sm)] border cursor-pointer w-full"
+        style={{
+          background: "var(--secondary)",
+          borderColor: open ? "var(--primary)" : "var(--border)",
+          color: "var(--foreground)",
+          fontFamily: "'Inter Display', sans-serif",
+          fontSize: "var(--text-label)",
+        }}
+      >
+        <span
+          className="w-[12px] h-[12px] rounded-full shrink-0 border"
+          style={{ background: value, borderColor: "var(--border)" }}
+        />
+        <span className="flex-1 text-left truncate" style={{ color: "var(--muted-foreground)" }}>
+          {selectedLabel}
+        </span>
+        <ChevronDown
+          size={12}
+          style={{
+            color: "var(--muted-foreground)",
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.15s",
+            flexShrink: 0,
+          }}
+        />
+      </button>
+
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: "fixed",
+              top: dropPos.top,
+              left: dropPos.left,
+              width: Math.max(dropPos.width, 220),
+              zIndex: 9999,
+              maxHeight: 280,
+              overflowY: "auto",
+              background: "var(--popover)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            }}
+          >
+            {COLOR_GROUPS.map((group) => (
+              <div key={group.group}>
+                {/* Group header */}
+                <div
+                  style={{
+                    padding: "6px 10px 3px",
+                    fontFamily: "'Inter Display', sans-serif",
+                    fontSize: "var(--text-label)",
+                    fontWeight: "600",
+                    color: "var(--muted-foreground)",
+                    position: "sticky",
+                    top: 0,
+                    background: "var(--popover)",
+                  }}
+                >
+                  {group.group}
+                </div>
+
+                {group.tokens.map((token) => {
+                  const resolved = resolveVar(token.varName);
+                  const isSelected = resolved === value;
+                  return (
+                    <button
+                      key={token.varName}
+                      onClick={() => { onChange(resolved); setOpen(false); }}
+                      className="flex items-center gap-[8px] w-full px-[10px] py-[5px] cursor-pointer"
+                      style={{
+                        background: isSelected ? "var(--secondary)" : "transparent",
+                        fontFamily: "'Inter Display', sans-serif",
+                        fontSize: "var(--text-label)",
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      <span
+                        className="w-[10px] h-[10px] rounded-full shrink-0 border"
+                        style={{ background: resolved, borderColor: "var(--border)", flexShrink: 0 }}
+                      />
+                      <span>{token.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
+// ── Line Width / Style options ────────────────────────────────────────────────
 
 const LINE_WIDTH_OPTIONS = [0.5, 1, 2, 3, 4];
 const LINE_STYLE_OPTIONS = [
@@ -36,6 +322,28 @@ const LINE_STYLE_OPTIONS = [
   { value: 3, label: "Large Dashed" },
   { value: 4, label: "Sparse Dotted" },
 ];
+
+// ── Shared styles ─────────────────────────────────────────────────────────────
+
+const inputStyle: React.CSSProperties = {
+  background: "var(--secondary)",
+  color: "var(--foreground)",
+  fontFamily: "'Inter Display', sans-serif",
+  fontSize: "var(--text-label)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  padding: "4px 8px",
+  outline: "none",
+  width: "100%",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontFamily: "'Inter Display', sans-serif",
+  fontSize: "var(--text-label)",
+  color: "var(--muted-foreground)",
+};
+
+// ── PriceLineEditor ───────────────────────────────────────────────────────────
 
 interface PriceLineEditorProps {
   index: number;
@@ -63,9 +371,7 @@ export function PriceLineEditor({
 
   const [{ handlerId }, drop] = useDrop({
     accept: ITEM_TYPE,
-    collect: (monitor) => ({
-      handlerId: monitor.getHandlerId(),
-    }),
+    collect: (monitor) => ({ handlerId: monitor.getHandlerId() }),
     hover(item: { index: number }, monitor) {
       if (!ref.current) return;
       const dragIndex = item.index;
@@ -73,8 +379,7 @@ export function PriceLineEditor({
       if (dragIndex === hoverIndex) return;
 
       const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY =
-        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
@@ -90,16 +395,12 @@ export function PriceLineEditor({
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE,
     item: () => ({ index }),
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
   const [{ isOver }] = useDrop({
     accept: ITEM_TYPE,
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
+    collect: (monitor) => ({ isOver: monitor.isOver() }),
   });
 
   drop(ref);
@@ -114,30 +415,6 @@ export function PriceLineEditor({
     setEditingLabel(false);
   };
 
-  const inputStyle: React.CSSProperties = {
-    background: "var(--secondary)",
-    color: "var(--foreground)",
-    fontFamily: "'Inter Display', sans-serif",
-    fontSize: "var(--text-label)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-sm)",
-    padding: "4px 8px",
-    outline: "none",
-    width: "100%",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontFamily: "'Inter Display', sans-serif",
-    fontSize: "var(--text-label)",
-    color: "var(--muted-foreground)",
-  };
-
-  const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    cursor: "pointer",
-    appearance: "auto" as const,
-  };
-
   return (
     <div
       ref={ref}
@@ -149,20 +426,20 @@ export function PriceLineEditor({
         opacity: isDragging ? 0.4 : 1,
       }}
     >
-      {/* Header */}
+      {/* Header row */}
       <div className="flex items-center gap-[8px] p-[12px]">
         <div
-          ref={(node) => {
-            drag(node);
-          }}
+          ref={(node) => { drag(node); }}
           className="shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center"
         >
           <GripVertical size={14} style={{ color: "var(--muted-foreground)" }} />
         </div>
+
         <div
           className="w-[10px] h-[10px] rounded-full shrink-0"
           style={{ backgroundColor: config.color }}
         />
+
         {editingLabel ? (
           <div className="flex-1 min-w-0 flex items-center gap-[4px]">
             <input
@@ -171,16 +448,10 @@ export function PriceLineEditor({
               onChange={(e) => setLabelDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleLabelConfirm();
-                if (e.key === "Escape") {
-                  setLabelDraft(config.label);
-                  setEditingLabel(false);
-                }
+                if (e.key === "Escape") { setLabelDraft(config.label); setEditingLabel(false); }
               }}
               autoFocus
-              style={{
-                ...inputStyle,
-                fontSize: "var(--text-base)",
-              }}
+              style={{ ...inputStyle, fontSize: "var(--text-base)" }}
             />
             <button
               onClick={handleLabelConfirm}
@@ -192,17 +463,12 @@ export function PriceLineEditor({
         ) : (
           <button
             className="flex-1 min-w-0 flex items-center gap-[4px] cursor-pointer group"
-            onClick={() => {
-              setLabelDraft(config.label);
-              setEditingLabel(true);
-            }}
+            onClick={() => { setLabelDraft(config.label); setEditingLabel(true); }}
           >
             <span
               className="truncate"
               style={{
-                color: config.visible
-                  ? "var(--foreground)"
-                  : "var(--muted-foreground)",
+                color: config.visible ? "var(--foreground)" : "var(--muted-foreground)",
                 fontFamily: "'Inter Display', sans-serif",
                 fontSize: "var(--text-base)",
               }}
@@ -233,11 +499,9 @@ export function PriceLineEditor({
           className="shrink-0 p-[4px] rounded hover:bg-secondary transition-colors cursor-pointer"
           title={config.visible ? "Hide line" : "Show line"}
         >
-          {config.visible ? (
-            <Eye size={14} style={{ color: "var(--muted-foreground)" }} />
-          ) : (
-            <EyeOff size={14} style={{ color: "var(--muted-foreground)" }} />
-          )}
+          {config.visible
+            ? <Eye size={14} style={{ color: "var(--muted-foreground)" }} />
+            : <EyeOff size={14} style={{ color: "var(--muted-foreground)" }} />}
         </button>
 
         <button
@@ -245,14 +509,9 @@ export function PriceLineEditor({
           className="shrink-0 p-[4px] rounded hover:bg-secondary transition-colors cursor-pointer"
           title={expanded ? "Collapse" : "Expand"}
         >
-          {expanded ? (
-            <ChevronUp size={14} style={{ color: "var(--muted-foreground)" }} />
-          ) : (
-            <ChevronDown
-              size={14}
-              style={{ color: "var(--muted-foreground)" }}
-            />
-          )}
+          {expanded
+            ? <ChevronUp size={14} style={{ color: "var(--muted-foreground)" }} />
+            : <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />}
         </button>
       </div>
 
@@ -264,124 +523,52 @@ export function PriceLineEditor({
         >
           {/* Price */}
           <div className="flex items-center gap-[8px] pt-[10px]">
-            <label className="w-[80px] shrink-0" style={labelStyle}>
-              Price
-            </label>
+            <label className="w-[80px] shrink-0" style={labelStyle}>Price</label>
             <input
               type="number"
               value={config.price}
-              onChange={(e) =>
-                onChange({ ...config, price: parseFloat(e.target.value) || 0 })
-              }
+              onChange={(e) => onChange({ ...config, price: parseFloat(e.target.value) || 0 })}
               step={100}
               style={inputStyle}
             />
           </div>
 
           {/* Line Color */}
-          <div className="flex flex-col gap-[6px]">
-            <label style={labelStyle}>Line Color</label>
-            <div className="flex items-center gap-[6px] flex-wrap">
-              {COLOR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => onChange({ ...config, color: c })}
-                  className="w-[22px] h-[22px] rounded-full border-2 transition-all cursor-pointer"
-                  style={{
-                    backgroundColor: c,
-                    borderColor:
-                      config.color === c
-                        ? "var(--muted-foreground)"
-                        : "transparent",
-                  }}
-                />
-              ))}
-              <input
-                type="color"
-                value={config.color}
-                onChange={(e) => onChange({ ...config, color: e.target.value })}
-                className="w-[22px] h-[22px] rounded-full cursor-pointer border-0 p-0"
-                style={{ background: "none" }}
-              />
-            </div>
-          </div>
+          <ColorTokenPicker
+            label="Line Color"
+            value={config.color}
+            onChange={(c) => onChange({ ...config, color: c })}
+          />
 
-          {/* Label Badge Color */}
-          <div className="flex flex-col gap-[6px]">
-            <label style={labelStyle}>Badge Color</label>
-            <div className="flex items-center gap-[6px] flex-wrap">
-              {COLOR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => onChange({ ...config, labelColor: c })}
-                  className="w-[22px] h-[22px] rounded-full border-2 transition-all cursor-pointer"
-                  style={{
-                    backgroundColor: c,
-                    borderColor:
-                      config.labelColor === c
-                        ? "var(--muted-foreground)"
-                        : "transparent",
-                  }}
-                />
-              ))}
-              <input
-                type="color"
-                value={config.labelColor}
-                onChange={(e) =>
-                  onChange({ ...config, labelColor: e.target.value })
-                }
-                className="w-[22px] h-[22px] rounded-full cursor-pointer border-0 p-0"
-                style={{ background: "none" }}
-              />
-            </div>
-          </div>
+          {/* Badge Color */}
+          <ColorTokenPicker
+            label="Badge Color"
+            value={config.labelColor}
+            onChange={(c) => onChange({ ...config, labelColor: c })}
+          />
 
-          {/* Badge Text Color */}
-          <div className="flex flex-col gap-[6px]">
-            <label style={labelStyle}>Badge Text</label>
-            <div className="flex items-center gap-[6px] flex-wrap">
-              {COLOR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => onChange({ ...config, labelTextColor: c })}
-                  className="w-[22px] h-[22px] rounded-full border-2 transition-all cursor-pointer"
-                  style={{
-                    backgroundColor: c,
-                    borderColor:
-                      config.labelTextColor === c
-                        ? "var(--muted-foreground)"
-                        : "transparent",
-                  }}
-                />
-              ))}
-              <input
-                type="color"
-                value={config.labelTextColor}
-                onChange={(e) =>
-                  onChange({ ...config, labelTextColor: e.target.value })
-                }
-                className="w-[22px] h-[22px] rounded-full cursor-pointer border-0 p-0"
-                style={{ background: "none" }}
-              />
-            </div>
-          </div>
+          {/* Badge Text */}
+          <ColorTokenPicker
+            label="Badge Text"
+            value={config.labelTextColor}
+            onChange={(c) => onChange({ ...config, labelTextColor: c })}
+          />
 
           {/* Line Width */}
           <div className="flex items-center gap-[8px]">
-            <label className="w-[80px] shrink-0" style={labelStyle}>
-              Width
-            </label>
+            <label className="w-[80px] shrink-0" style={labelStyle}>Width</label>
             <input
               type="range"
               min={0}
               max={LINE_WIDTH_OPTIONS.length - 1}
               step={1}
-              value={LINE_WIDTH_OPTIONS.indexOf(config.lineWidth) === -1 ? 1 : LINE_WIDTH_OPTIONS.indexOf(config.lineWidth)}
+              value={
+                LINE_WIDTH_OPTIONS.indexOf(config.lineWidth) === -1
+                  ? 1
+                  : LINE_WIDTH_OPTIONS.indexOf(config.lineWidth)
+              }
               onChange={(e) =>
-                onChange({
-                  ...config,
-                  lineWidth: LINE_WIDTH_OPTIONS[parseInt(e.target.value)],
-                })
+                onChange({ ...config, lineWidth: LINE_WIDTH_OPTIONS[parseInt(e.target.value)] })
               }
               className="flex-1 cursor-pointer"
             />
@@ -392,28 +579,19 @@ export function PriceLineEditor({
 
           {/* Line Style */}
           <div className="flex items-center gap-[8px]">
-            <label className="w-[80px] shrink-0" style={labelStyle}>
-              Style
-            </label>
+            <label className="w-[80px] shrink-0" style={labelStyle}>Style</label>
             <select
               value={config.lineStyle}
-              onChange={(e) =>
-                onChange({
-                  ...config,
-                  lineStyle: parseInt(e.target.value, 10),
-                })
-              }
-              style={selectStyle}
+              onChange={(e) => onChange({ ...config, lineStyle: parseInt(e.target.value, 10) })}
+              style={{ ...inputStyle, cursor: "pointer", appearance: "auto" as const }}
             >
               {LINE_STYLE_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>
 
-          {/* Delete button for custom levels */}
+          {/* Delete */}
           {canDelete && (
             <button
               onClick={() => onDelete(config.id)}
@@ -430,7 +608,7 @@ export function PriceLineEditor({
             </button>
           )}
 
-          {/* Duplicate button for custom levels */}
+          {/* Duplicate */}
           <button
             onClick={() => onDuplicate(config)}
             className="flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border transition-colors cursor-pointer mt-[4px]"
