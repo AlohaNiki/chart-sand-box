@@ -9,6 +9,14 @@
     </head>
 
     <body>
+      <!-- Apply saved theme class before React renders to avoid stale resolveVar() reads -->
+      <script>
+        try {
+          if (localStorage.getItem('chartConfig_theme') === 'light') {
+            document.documentElement.classList.add('light');
+          }
+        } catch(e) {}
+      </script>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
     </body>

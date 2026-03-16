@@ -107,10 +107,22 @@ export default function App() {
     }
   });
 
+  // Save theme to localStorage (class is applied synchronously in toggleTheme)
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEYS.theme, theme); } catch {}
-    document.documentElement.classList.toggle("light", theme === "light");
+  }, [theme]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => document.documentElement.classList.remove("light");
+  }, []);
+
+  // Toggle theme — apply CSS class synchronously BEFORE setTheme so that
+  // resolveVar() calls during the upcoming re-render see the correct values
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.classList.toggle("light", next === "light");
+    setTheme(next);
   }, [theme]);
 
   // ── Persist priceLines in localStorage ───────────────────────────────────
@@ -333,7 +345,7 @@ export default function App() {
               Reset
             </button>
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={toggleTheme}
               className="flex items-center justify-center w-[32px] h-[32px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
               style={{ color: "var(--muted-foreground)" }}
               title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
