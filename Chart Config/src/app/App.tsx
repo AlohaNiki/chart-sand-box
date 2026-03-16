@@ -21,9 +21,9 @@ function makeDefaultLines(base: number): PriceLineConfig[] {
       id: "buy-order",
       label: "Buy Order",
       price: r(base),
-      color: "#009F70",        // --positive-bg-default
-      labelColor: "#009F70",
-      labelTextColor: "#FFFFFF",
+      color: "--positive-bg-default",
+      labelColor: "--positive-bg-default",
+      labelTextColor: "--positive-over",
       lineWidth: 2,
       lineStyle: 2,
       visible: true,
@@ -32,9 +32,9 @@ function makeDefaultLines(base: number): PriceLineConfig[] {
       id: "take-profit",
       label: "Take Profit",
       price: r(base * 1.05),   // +5 %
-      color: "#66FFE5",        // --chart-lines-line-1
-      labelColor: "#66FFE5",
-      labelTextColor: "#000000",
+      color: "--chart-lines-line-1",
+      labelColor: "--chart-lines-line-1",
+      labelTextColor: "--warning-over",
       lineWidth: 1,
       lineStyle: 2,
       visible: true,
@@ -43,9 +43,9 @@ function makeDefaultLines(base: number): PriceLineConfig[] {
       id: "stop-loss",
       label: "Stop Loss",
       price: r(base * 0.97),   // −3 %
-      color: "#F14F5D",        // --negative-bg-default
-      labelColor: "#F14F5D",
-      labelTextColor: "#FFFFFF",
+      color: "--negative-bg-default",
+      labelColor: "--negative-bg-default",
+      labelTextColor: "--negative-over",
       lineWidth: 1,
       lineStyle: 2,
       visible: true,
@@ -54,9 +54,9 @@ function makeDefaultLines(base: number): PriceLineConfig[] {
       id: "liquidation",
       label: "Liquidation",
       price: r(base * 0.90),   // −10 %
-      color: "#FFCC4A",        // --warning-bg-default
-      labelColor: "#FFCC4A",
-      labelTextColor: "#000000",
+      color: "--warning-bg-default",
+      labelColor: "--warning-bg-default",
+      labelTextColor: "--warning-over",
       lineWidth: 0.5,
       lineStyle: 1,
       visible: true,
@@ -167,9 +167,9 @@ export default function App() {
       id,
       label: `Level ${nextCustomId - 1}`,
       price: Math.round(lastPrice + (Math.random() - 0.5) * 2000),
-      color: "#5364FF",        // --accent-text-and-icons
-      labelColor: "#5364FF",   // --accent-text-and-icons
-      labelTextColor: "#FFFFFF", // --accent-over
+      color: "--accent-text-and-icons",
+      labelColor: "--accent-text-and-icons",
+      labelTextColor: "--accent-over",
       lineWidth: 1,
       lineStyle: 2,
       visible: true,

@@ -149,6 +149,12 @@ function resolveVar(varName: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
+/** If value is a CSS var name (starts with --), resolve it. Otherwise return as-is. */
+export function resolveColor(value: string): string {
+  if (value.startsWith("--")) return resolveVar(value);
+  return value;
+}
+
 // ── Color Token Picker ────────────────────────────────────────────────────────
 
 interface ColorTokenPickerProps {
@@ -190,17 +196,19 @@ function ColorTokenPicker({ label, value, onChange }: ColorTokenPickerProps) {
     setOpen(true);
   };
 
-  // Find friendly label for current value
+  // Find friendly label for current value (token name stored directly)
   let selectedLabel: string = value;
   for (const group of COLOR_GROUPS) {
     for (const token of group.tokens) {
-      if (resolveVar(token.varName) === value) {
+      if (token.varName === value) {
         selectedLabel = `${group.group} / ${token.label}`;
         break;
       }
     }
     if (selectedLabel !== value) break;
   }
+
+  const resolvedValue = resolveColor(value);
 
   return (
     <div className="flex flex-col gap-[6px]">
@@ -228,7 +236,7 @@ function ColorTokenPicker({ label, value, onChange }: ColorTokenPickerProps) {
       >
         <span
           className="w-[12px] h-[12px] rounded-full shrink-0 border"
-          style={{ background: value, borderColor: "var(--border)" }}
+          style={{ background: resolvedValue, borderColor: "var(--border)" }}
         />
         <span className="flex-1 text-left truncate" style={{ color: "var(--muted-foreground)" }}>
           {selectedLabel}
@@ -282,11 +290,11 @@ function ColorTokenPicker({ label, value, onChange }: ColorTokenPickerProps) {
 
                 {group.tokens.map((token) => {
                   const resolved = resolveVar(token.varName);
-                  const isSelected = resolved === value;
+                  const isSelected = token.varName === value;
                   return (
                     <button
                       key={token.varName}
-                      onClick={() => { onChange(resolved); setOpen(false); }}
+                      onClick={() => { onChange(token.varName); setOpen(false); }}
                       className="flex items-center gap-[8px] w-full px-[10px] py-[5px] cursor-pointer"
                       style={{
                         background: isSelected ? "var(--secondary)" : "transparent",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { resolveColor } from "./price-line-editor";
 import {
   createChart,
   ColorType,
@@ -399,13 +400,13 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
 
       const options: CreatePriceLineOptions = {
         price: config.price,
-        color: config.color,
+        color: resolveColor(config.color),
         lineWidth: config.lineWidth as PriceLineOptions["lineWidth"],
         lineStyle: config.lineStyle,
         axisLabelVisible: true,
         title: config.label,
-        axisLabelColor: config.labelColor,
-        axisLabelTextColor: config.labelTextColor,
+        axisLabelColor: resolveColor(config.labelColor),
+        axisLabelTextColor: resolveColor(config.labelTextColor),
       };
 
       const existing = existingLines.get(config.id);
@@ -416,7 +417,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
         existingLines.set(config.id, line);
       }
     }
-  }, [priceLines]);
+  }, [priceLines, theme]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
