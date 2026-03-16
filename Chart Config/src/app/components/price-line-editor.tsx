@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useDrag, useDrop } from "react-dnd";
 import {
   Eye,
   EyeOff,
@@ -10,11 +9,8 @@ import {
   Pencil,
   Check,
   Copy,
-  GripVertical,
 } from "lucide-react";
 import type { PriceLineConfig } from "./chart-widget";
-
-const ITEM_TYPE = "PRICE_LINE";
 
 // ── Color token groups ────────────────────────────────────────────────────────
 
@@ -354,64 +350,24 @@ const labelStyle: React.CSSProperties = {
 // ── PriceLineEditor ───────────────────────────────────────────────────────────
 
 interface PriceLineEditorProps {
-  index: number;
   config: PriceLineConfig;
   onChange: (updated: PriceLineConfig) => void;
   onDelete: (id: string) => void;
   onDuplicate: (config: PriceLineConfig) => void;
-  onMove: (dragIndex: number, hoverIndex: number) => void;
   canDelete: boolean;
 }
 
 export function PriceLineEditor({
-  index,
   config,
   onChange,
   onDelete,
   onDuplicate,
-  onMove,
   canDelete,
 }: PriceLineEditorProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelDraft, setLabelDraft] = useState(config.label);
   const ref = useRef<HTMLDivElement>(null);
-
-  const [{ handlerId }, drop] = useDrop({
-    accept: ITEM_TYPE,
-    collect: (monitor) => ({ handlerId: monitor.getHandlerId() }),
-    hover(item: { index: number }, monitor) {
-      if (!ref.current) return;
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex) return;
-
-      const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
-
-      onMove(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
-
-  const [{ isDragging }, drag] = useDrag({
-    type: ITEM_TYPE,
-    item: () => ({ index }),
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-  });
-
-  const [{ isOver }] = useDrop({
-    accept: ITEM_TYPE,
-    collect: (monitor) => ({ isOver: monitor.isOver() }),
-  });
-
-  drop(ref);
 
   const handleLabelConfirm = () => {
     const trimmed = labelDraft.trim();
@@ -426,27 +382,14 @@ export function PriceLineEditor({
   return (
     <div
       ref={ref}
-      data-handler-id={handlerId}
       className="rounded-[var(--radius)] border overflow-hidden transition-all"
       style={{
         background: "var(--card)",
-        borderColor: isOver ? "var(--primary)" : "var(--border)",
-        opacity: isDragging ? 0.4 : 1,
+        borderColor: "var(--border)",
       }}
     >
       {/* Header row */}
       <div className="flex items-center gap-[8px] p-[12px]">
-        <div
-          ref={(node) => { drag(node); }}
-          className="shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center"
-        >
-          <GripVertical size={14} style={{ color: "var(--muted-foreground)" }} />
-        </div>
-
-        <div
-          className="w-[10px] h-[10px] rounded-full shrink-0"
-          style={{ backgroundColor: config.color }}
-        />
 
         {editingLabel ? (
           <div className="flex-1 min-w-0 flex items-center gap-[4px]">

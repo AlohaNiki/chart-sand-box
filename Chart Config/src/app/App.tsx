@@ -1,7 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
 import { PriceLineEditor } from "./components/price-line-editor";
 import {
@@ -197,18 +195,6 @@ export default function App() {
     });
   }, []);
 
-  const handleMoveLine = useCallback(
-    (dragIndex: number, hoverIndex: number) => {
-      setPriceLines((prev) => {
-        const updated = [...prev];
-        const [removed] = updated.splice(dragIndex, 1);
-        updated.splice(hoverIndex, 0, removed);
-        return updated;
-      });
-    },
-    []
-  );
-
   /** Called when user drags a price line directly on the chart */
   const handleChartDrag = useCallback((id: string, newPrice: number) => {
     setPriceLines((prev) =>
@@ -301,7 +287,7 @@ export default function App() {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <>
       <div
         className="size-full flex flex-col overflow-hidden"
         style={{ background: "var(--background)" }}
@@ -463,14 +449,12 @@ export default function App() {
                 )}
 
                 {/* Draggable list */}
-                {priceLines.map((config, index) => (
+                {priceLines.map((config) => (
                   <PriceLineEditor
                     key={config.id}
-                    index={index}
                     config={config}
                     onChange={handleLineChange}
                     onDelete={handleDeleteLine}
-                    onMove={handleMoveLine}
                     onDuplicate={handleDuplicateLine}
                     canDelete={!BUILT_IN_IDS.has(config.id)}
                   />
@@ -540,6 +524,6 @@ export default function App() {
         </div>
       </div>
       <SpeedInsights />
-    </DndProvider>
+    </>
   );
 }
