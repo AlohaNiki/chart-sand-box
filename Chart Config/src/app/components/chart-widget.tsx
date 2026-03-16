@@ -61,6 +61,8 @@ interface ChartWidgetProps {
   /** Called when user drags a price line on the chart */
   onPriceLineDrag?: (id: string, newPrice: number) => void;
   theme?: "dark" | "light";
+  chartBg?: string;
+  gridColor?: string;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -80,7 +82,7 @@ function rgba(rgbVar: string, alpha: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetProps) {
+export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor }: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -127,14 +129,14 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
 
     const chart = createChart(container, {
       layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
+        background: { type: ColorType.Solid, color: resolveColor(chartBg ?? "--surface-canvas") },
         textColor: css("--contrast-secondary"),
         fontFamily: "'Inter Display', sans-serif",
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: css("--border") },
-        horzLines: { color: css("--border") },
+        vertLines: { color: resolveColor(gridColor ?? "--border") },
+        horzLines: { color: resolveColor(gridColor ?? "--border") },
       },
       crosshair: {
         vertLine: {
@@ -337,17 +339,22 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
     };
   }, [interval, chartReady]);
 
-  // ── Update chart colors when theme changes ────────────────────────────────
+  // ── Update chart colors when theme / bg / grid changes ───────────────────
   useEffect(() => {
     const chart = chartRef.current;
     const series = seriesRef.current;
     if (!chart || !series) return;
 
+    const resolvedGrid = resolveColor(gridColor ?? "--border");
+
     chart.applyOptions({
-      layout: { textColor: css("--contrast-secondary") },
+      layout: {
+        textColor: css("--contrast-secondary"),
+        background: { type: ColorType.Solid, color: resolveColor(chartBg ?? "--surface-canvas") },
+      },
       grid: {
-        vertLines: { color: css("--border") },
-        horzLines: { color: css("--border") },
+        vertLines: { color: resolvedGrid },
+        horzLines: { color: resolvedGrid },
       },
       crosshair: {
         vertLine: {
@@ -371,7 +378,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme }: ChartWidgetP
       wickUpColor: rgba("--positive-bg-default-rgb", 0.6),
       wickDownColor: rgba("--negative-bg-default-rgb", 0.6),
     });
-  }, [theme]);
+  }, [theme, chartBg, gridColor]);
 
   // ── Sync price lines with chart ───────────────────────────────────────────
   useEffect(() => {

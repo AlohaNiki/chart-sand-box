@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
-import { PriceLineEditor } from "./components/price-line-editor";
+import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
 import {
   RotateCcw,
   Plus,
@@ -77,6 +79,8 @@ const BUILT_IN_IDS = new Set(["buy-order", "take-profit", "stop-loss", "liquidat
 const STORAGE_KEYS = {
   theme: "chartConfig_theme",
   priceLines: "chartConfig_priceLines",
+  chartBg: "chartConfig_chartBg",
+  gridColor: "chartConfig_gridColor",
 } as const;
 
 let nextCustomId = 1;
@@ -143,6 +147,17 @@ export default function App() {
     try { localStorage.setItem(STORAGE_KEYS.priceLines, JSON.stringify(priceLines)); } catch {}
   }, [priceLines]);
 
+  // ── Chart appearance settings ─────────────────────────────────────────────
+  const [chartBg, setChartBg] = useState<string>(() => {
+    try { return localStorage.getItem(STORAGE_KEYS.chartBg) || "--surface-canvas"; } catch { return "--surface-canvas"; }
+  });
+  const [gridColor, setGridColor] = useState<string>(() => {
+    try { return localStorage.getItem(STORAGE_KEYS.gridColor) || "--border"; } catch { return "--border"; }
+  });
+
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.chartBg, chartBg); } catch {} }, [chartBg]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.gridColor, gridColor); } catch {} }, [gridColor]);
+
   // On first visit (no localStorage), snap defaults to live BTC price
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEYS.priceLines)) return;
@@ -189,6 +204,15 @@ export default function App() {
 
   const handleDeleteLine = useCallback((id: string) => {
     setPriceLines((prev) => prev.filter((pl) => pl.id !== id));
+  }, []);
+
+  const handleMoveLine = useCallback((dragIndex: number, hoverIndex: number) => {
+    setPriceLines((prev) => {
+      const updated = [...prev];
+      const [removed] = updated.splice(dragIndex, 1);
+      updated.splice(hoverIndex, 0, removed);
+      return updated;
+    });
   }, []);
 
   const handleDuplicateLine = useCallback((source: PriceLineConfig) => {
@@ -299,7 +323,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <DndProvider backend={HTML5Backend}>
       <div
         className="size-full flex flex-col overflow-hidden"
         style={{ background: "var(--background)" }}
@@ -370,6 +394,8 @@ export default function App() {
                 priceLines={priceLines}
                 onPriceLineDrag={handleChartDrag}
                 theme={theme}
+                chartBg={chartBg}
+                gridColor={gridColor}
               />
             </div>
           </div>
@@ -380,6 +406,27 @@ export default function App() {
               style={{ background: "var(--sidebar)" }}
             >
               <div className="p-[16px] flex flex-col gap-[12px]">
+                {/* Chart Settings */}
+                <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
+                  Chart
+                </h4>
+                <div className="flex flex-col gap-[8px]">
+                  <div className="flex flex-col gap-[4px]">
+                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      Background
+                    </span>
+                    <ColorTokenPicker value={chartBg} onChange={setChartBg} />
+                  </div>
+                  <div className="flex flex-col gap-[4px]">
+                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      Grid
+                    </span>
+                    <ColorTokenPicker value={gridColor} onChange={setGridColor} />
+                  </div>
+                </div>
+
+                <div className="h-px" style={{ background: "var(--border)" }} />
+
                 {/* Panel header */}
                 <div className="flex items-center justify-between">
                   <h4
@@ -461,13 +508,15 @@ export default function App() {
                 )}
 
                 {/* Draggable list */}
-                {priceLines.map((config) => (
+                {priceLines.map((config, index) => (
                   <PriceLineEditor
                     key={config.id}
+                    index={index}
                     config={config}
                     onChange={handleLineChange}
                     onDelete={handleDeleteLine}
                     onDuplicate={handleDuplicateLine}
+                    onMove={handleMoveLine}
                     canDelete={!BUILT_IN_IDS.has(config.id)}
                   />
                 ))}
@@ -536,6 +585,6 @@ export default function App() {
         </div>
       </div>
       <SpeedInsights />
-    </>
+    </DndProvider>
   );
 }
