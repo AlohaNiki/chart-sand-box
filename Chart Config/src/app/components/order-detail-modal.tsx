@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { X, Copy, TrendingUp, TrendingDown } from "lucide-react";
 import type { TradeOrder } from "./chart-widget";
 
@@ -5,6 +6,8 @@ interface Props {
   order: TradeOrder;
   onClose: () => void;
 }
+
+const DURATION = 180; // ms
 
 function fmtPrice(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -42,22 +45,42 @@ function Row({ label, value, copy }: { label: string; value: string; copy?: bool
 }
 
 export function OrderDetailModal({ order, onClose }: Props) {
+  const [visible, setVisible] = useState(false);
+
+  // Fade in on mount
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
+
+  // Fade out, then unmount
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, DURATION);
+  };
+
   const isBuy = order.type === "buy";
   const isProfit = (order.pnl ?? 0) >= 0;
   const operation = order.operation ?? (isBuy ? "Long" : "Short");
   const pnlColor = isProfit ? "var(--positive-bg-default)" : "var(--negative-bg-default)";
   const pnlOver  = isProfit ? "var(--positive-over)"       : "var(--negative-over)";
 
+  const easing = `opacity ${DURATION}ms cubic-bezier(0.4,0,0.2,1), transform ${DURATION}ms cubic-bezier(0.4,0,0.2,1)`;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
+      onClick={handleClose}
+      style={{ transition: `opacity ${DURATION}ms ease`, opacity: visible ? 1 : 0 }}
     >
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.45)" }} />
 
       <div
         className="relative w-[360px] rounded-[var(--radius-card)] overflow-hidden shadow-xl"
-        style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+        style={{
+          background: "var(--surface-elevation-1)",
+          border: "1px solid var(--border)",
+          transition: easing,
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.97)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ─────────────────────────────────────────── */}
@@ -94,7 +117,7 @@ export function OrderDetailModal({ order, onClose }: Props) {
             </div>
           </div>
 
-          <button onClick={onClose} className="cursor-pointer opacity-50 hover:opacity-100 transition-opacity" style={{ color: "var(--foreground)" }}>
+          <button onClick={handleClose} className="cursor-pointer opacity-50 hover:opacity-100 transition-opacity" style={{ color: "var(--foreground)" }}>
             <X size={16} />
           </button>
         </div>
