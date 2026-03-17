@@ -167,18 +167,16 @@ type Interval = (typeof INTERVALS)[number];
 
 const INTERVAL_STORAGE_KEY = "chartConfig_interval";
 
-const INTERVAL_CANDLE_LIMIT: Record<Interval, number> = {
-  "1d":  200,
-  "4h":  1200,
-  "1h":  4800,
-  "15m": 10000,
-  "5m":  30000,
-  "1m":  60000,
-};
-
-const BINANCE_MAX = 1000;
-
-function parseKlines(data: unknown[][]): CandlestickData<Time>[] {
+async function fetchKlines(
+  interval: Interval,
+  signal: AbortSignal
+): Promise<CandlestickData<Time>[]> {
+  const res = await fetch(
+    `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1000`,
+    { signal }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data: unknown[][] = await res.json();
   return data.map((k) => ({
     time:  Math.floor((k[0] as number) / 1000) as Time,
     open:  parseFloat(k[1] as string),
@@ -186,50 +184,6 @@ function parseKlines(data: unknown[][]): CandlestickData<Time>[] {
     low:   parseFloat(k[3] as string),
     close: parseFloat(k[4] as string),
   }));
-}
-
-async function fetchKlines(
-  interval: Interval,
-  signal: AbortSignal
-): Promise<CandlestickData<Time>[]> {
-  const total = INTERVAL_CANDLE_LIMIT[interval];
-
-  if (total <= BINANCE_MAX) {
-    const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${total}`,
-      { signal }
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return parseKlines(await res.json());
-  }
-
-  // Paginate backwards in time: fetch batches of 1000 until we have `total` candles
-  const batches: CandlestickData<Time>[][] = [];
-  let endTime: number | undefined;
-  let remaining = total;
-
-  while (remaining > 0) {
-    const limit = Math.min(remaining, BINANCE_MAX);
-    const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}${endTime ? `&endTime=${endTime}` : ""}`;
-    const res = await fetch(url, { signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data: unknown[][] = await res.json();
-    if (data.length === 0) break;
-
-    const candles = parseKlines(data);
-    batches.unshift(candles);
-    remaining -= candles.length;
-    // Next batch ends just before the oldest candle we received
-    endTime = (data[0][0] as number) - 1;
-    if (candles.length < limit) break; // ran out of history
-  }
-
-  // Merge, deduplicate by time, sort ascending
-  const merged = batches.flat();
-  const seen = new Set<number>();
-  return merged
-    .filter((c) => { const t = c.time as number; if (seen.has(t)) return false; seen.add(t); return true; })
-    .sort((a, b) => (a.time as number) - (b.time as number));
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
