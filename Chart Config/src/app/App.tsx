@@ -399,7 +399,7 @@ export default function App() {
                 fontFamily: "'Inter Display', sans-serif",
               }}
             >
-              Chart Widget Debug
+              Chart Console
             </h3>
             <span
               className="px-[8px] py-[2px] rounded-[var(--radius-sm)]"

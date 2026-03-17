@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { resolveColor } from "./price-line-editor";
+import type { CanvasRenderingTarget2D } from "fancy-canvas";
 import {
   createChart,
-  createSeriesMarkers,
   ColorType,
   CandlestickSeries,
   type IChartApi,
@@ -15,6 +15,118 @@ import {
   type PriceLineOptions,
   type MouseEventParams,
 } from "lightweight-charts";
+
+// ── Custom Order Markers Primitive ────────────────────────────────────────────
+
+function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+class OrderMarkersRenderer {
+  orders: TradeOrder[] = [];
+  series: ISeriesApi<"Candlestick"> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chart: any = null;
+
+  draw(target: CanvasRenderingTarget2D): void {
+    const { series, chart } = this;
+    if (!series || !chart) return;
+
+    target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
+      const W = 22, H = 22, TAIL = 7, R = 3;
+
+      for (const order of this.orders) {
+        const cx = chart.timeScale().timeToCoordinate(order.time as Time);
+        const cy = series.priceToCoordinate(order.price);
+        if (cx === null || cy === null) continue;
+
+        const x = cx * hpr;
+        const y = cy * vpr;
+        const w = W * hpr, h = H * hpr, tail = TAIL * vpr, r = R * hpr;
+        const isBuy = order.type === "buy";
+        const bgColor = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
+        const txtColor = isBuy ? css("--positive-over") : css("--negative-over");
+
+        ctx.save();
+        ctx.fillStyle = bgColor;
+
+        if (isBuy) {
+          // Box above price, tail points DOWN to price level
+          drawRoundedRect(ctx, x - w / 2, y - h - tail, w, h, r);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x - tail / 2, y - tail);
+          ctx.lineTo(x + tail / 2, y - tail);
+          ctx.lineTo(x, y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = txtColor;
+          ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("B", x, y - h / 2 - tail);
+        } else {
+          // Box below price, tail points UP to price level
+          drawRoundedRect(ctx, x - w / 2, y + tail, w, h, r);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x - tail / 2, y + tail);
+          ctx.lineTo(x + tail / 2, y + tail);
+          ctx.lineTo(x, y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = txtColor;
+          ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("S", x, y + h / 2 + tail);
+        }
+
+        ctx.restore();
+      }
+    });
+  }
+}
+
+class OrderMarkersPrimitive {
+  private _orders: TradeOrder[] = [];
+  private _showOrders = true;
+  private _renderer = new OrderMarkersRenderer();
+  private _views = [{ renderer: () => this._renderer, zOrder: () => "top" as const }];
+  private _requestUpdate?: () => void;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attached(param: any) {
+    this._renderer.series = param.series;
+    this._renderer.chart = param.chart;
+    this._requestUpdate = param.requestUpdate;
+  }
+
+  detached() {
+    this._renderer.series = null;
+    this._renderer.chart = null;
+    this._requestUpdate = undefined;
+  }
+
+  updateAllViews() {
+    this._renderer.orders = this._showOrders ? this._orders : [];
+  }
+
+  paneViews() { return this._views; }
+
+  setOrders(orders: TradeOrder[], show: boolean) {
+    this._orders = orders;
+    this._showOrders = show;
+    this._renderer.orders = show ? orders : [];
+    this._requestUpdate?.();
+  }
+}
 
 // ── Binance data ──────────────────────────────────────────────────────────────
 
@@ -189,7 +301,9 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
     chartRef.current = chart;
     seriesRef.current = series;
-    markersPluginRef.current = createSeriesMarkers(series, []);
+    const orderPrimitive = new OrderMarkersPrimitive();
+    series.attachPrimitive(orderPrimitive);
+    markersPluginRef.current = orderPrimitive;
     setChartReady(true);
 
     // --- Drag-on-chart logic ---
@@ -448,24 +562,9 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
   // ── Sync trade order markers ──────────────────────────────────────────────
   useEffect(() => {
-    const plugin = markersPluginRef.current;
+    const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
     if (!plugin || !chartReady) return;
-    if (!showOrders || !orders?.length) {
-      plugin.setMarkers([]);
-      return;
-    }
-    plugin.setMarkers(
-      orders.map((o) => ({
-        id: o.id,
-        time: o.time as Time,
-        price: o.price,
-        position: "atPriceMiddle" as const,
-        shape: "circle" as const,
-        color: o.type === "buy" ? css("--positive-bg-default") : css("--negative-bg-default"),
-        text: o.type === "buy" ? "B" : "S",
-        size: 1.5,
-      }))
-    );
+    plugin.setOrders(orders ?? [], showOrders ?? true);
   }, [orders, showOrders, theme, chartReady]);
 
   // ── Click-to-place order ───────────────────────────────────────────────────
