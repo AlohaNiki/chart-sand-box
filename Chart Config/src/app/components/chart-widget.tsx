@@ -53,9 +53,9 @@ class OrderMarkersRenderer {
       const W = charW + PAD_H * 2;
       const H = FONT_SIZE + PAD_V * 2;
 
-      const TAIL = 7 * vpr, R = 3 * hpr;
+      const TAIL = 5 * vpr, R = 3 * hpr;
       const GAP = 4 * vpr;          // gap between wick tip and tail tip
-      const HALF_TW = 5 * hpr;      // half-width of triangle base
+      const HALF_TW = 3 * hpr;      // half-width of triangle base
 
       for (const order of this.orders) {
         const cx = chart.timeScale().timeToCoordinate(order.time as Time);
