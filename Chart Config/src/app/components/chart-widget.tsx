@@ -48,7 +48,7 @@ class OrderMarkersRenderer {
 
       // Badge dimensions: padding 5px left/right, 2px top/bottom
       const PAD_H = 5 * hpr;  // horizontal padding
-      const PAD_V = 4 * vpr;  // vertical padding
+      const PAD_V = 3 * vpr;  // vertical padding
       const charW = ctx.measureText("B").width; // measure at current font
       const W = charW + PAD_H * 2;
       const H = FONT_SIZE + PAD_V * 2;
