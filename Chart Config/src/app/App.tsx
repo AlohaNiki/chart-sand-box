@@ -203,6 +203,7 @@ export default function App() {
   }, []);
 
   const handleReset = () => {
+    if (!window.confirm("Reset all price lines and chart settings to defaults? This cannot be undone.")) return;
     setImportMessage(null);
     setPriceLines(DEFAULT_PRICE_LINES);
     setChartBg("--surface-canvas");
