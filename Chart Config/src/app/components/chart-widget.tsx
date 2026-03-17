@@ -33,59 +33,86 @@ class OrderMarkersRenderer {
   series: ISeriesApi<"Candlestick"> | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   chart: any = null;
+  candleMap: Map<number, { high: number; low: number }> = new Map();
 
   draw(target: CanvasRenderingTarget2D): void {
     const { series, chart } = this;
     if (!series || !chart) return;
 
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
-      const W = 22, H = 22, TAIL = 7, R = 3;
+      // Dimensions in CSS px → scale to bitmap px
+      const W = 22 * hpr, H = 22 * hpr, TAIL = 7 * vpr, R = 3 * hpr;
+      const GAP = 4 * vpr;          // gap between wick tip and tail tip
+      const HALF_TW = 5 * hpr;      // half-width of triangle base
 
       for (const order of this.orders) {
         const cx = chart.timeScale().timeToCoordinate(order.time as Time);
-        const cy = series.priceToCoordinate(order.price);
-        if (cx === null || cy === null) continue;
+        if (cx === null) continue;
 
-        const x = cx * hpr;
-        const y = cy * vpr;
-        const w = W * hpr, h = H * hpr, tail = TAIL * vpr, r = R * hpr;
         const isBuy = order.type === "buy";
-        const bgColor = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
-        const txtColor = isBuy ? css("--positive-over") : css("--negative-over");
+
+        // Resolve reference price: candle low for buy, candle high for sell
+        const candle = this.candleMap.get(order.time);
+        const refPrice = isBuy
+          ? (candle?.low  ?? order.price)
+          : (candle?.high ?? order.price);
+
+        const cy = series.priceToCoordinate(refPrice);
+        if (cy === null) continue;
+
+        const x  = cx * hpr;
+        const ry = cy * vpr; // reference Y (wick tip in bitmap px)
+
+        const bgColor  = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
+        const txtColor = isBuy ? css("--positive-over")       : css("--negative-over");
 
         ctx.save();
         ctx.fillStyle = bgColor;
 
         if (isBuy) {
-          // Box above price, tail points DOWN to price level
-          drawRoundedRect(ctx, x - w / 2, y - h - tail, w, h, r);
+          // Marker BELOW candle low wick, tail points UP toward the wick
+          // Layout (Y increases downward):
+          //   wick low → GAP → tail tip → TAIL → tail base / box top → H → box bottom
+          const tipY  = ry + GAP;           // tail tip
+          const baseY = tipY + TAIL;         // tail base = box top
+
+          drawRoundedRect(ctx, x - W / 2, baseY, W, H, R);
           ctx.fill();
+          // Triangle pointing up
           ctx.beginPath();
-          ctx.moveTo(x - tail / 2, y - tail);
-          ctx.lineTo(x + tail / 2, y - tail);
-          ctx.lineTo(x, y);
+          ctx.moveTo(x - HALF_TW, baseY);
+          ctx.lineTo(x + HALF_TW, baseY);
+          ctx.lineTo(x, tipY);
           ctx.closePath();
           ctx.fill();
+          // Label
           ctx.fillStyle = txtColor;
           ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText("B", x, y - h / 2 - tail);
+          ctx.fillText("B", x, baseY + H / 2);
         } else {
-          // Box below price, tail points UP to price level
-          drawRoundedRect(ctx, x - w / 2, y + tail, w, h, r);
+          // Marker ABOVE candle high wick, tail points DOWN toward the wick
+          // Layout (Y increases downward):
+          //   box top → H → box bottom / tail base → TAIL → tail tip → GAP → wick high
+          const tipY  = ry - GAP;           // tail tip
+          const baseY = tipY - TAIL;         // tail base = box bottom
+
+          drawRoundedRect(ctx, x - W / 2, baseY - H, W, H, R);
           ctx.fill();
+          // Triangle pointing down
           ctx.beginPath();
-          ctx.moveTo(x - tail / 2, y + tail);
-          ctx.lineTo(x + tail / 2, y + tail);
-          ctx.lineTo(x, y);
+          ctx.moveTo(x - HALF_TW, baseY);
+          ctx.lineTo(x + HALF_TW, baseY);
+          ctx.lineTo(x, tipY);
           ctx.closePath();
           ctx.fill();
+          // Label
           ctx.fillStyle = txtColor;
           ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText("S", x, y + h / 2 + tail);
+          ctx.fillText("S", x, baseY - H / 2);
         }
 
         ctx.restore();
@@ -124,6 +151,11 @@ class OrderMarkersPrimitive {
     this._orders = orders;
     this._showOrders = show;
     this._renderer.orders = show ? orders : [];
+    this._requestUpdate?.();
+  }
+
+  setCandleMap(map: Map<number, { high: number; low: number }>) {
+    this._renderer.candleMap = map;
     this._requestUpdate?.();
   }
 }
@@ -216,6 +248,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   const wsRef = useRef<WebSocket | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersPluginRef = useRef<any>(null);
+  const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
 
   // Keep mutable refs for callbacks so event listeners always see latest values
   const priceLinesConfigRef = useRef<PriceLineConfig[]>(priceLines);
@@ -425,6 +458,12 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         chart.timeScale().fitContent();
         setIsLoading(false);
 
+        // Build candle map for order marker positioning
+        const map = new Map<number, { high: number; low: number }>();
+        for (const c of candles) map.set(c.time as number, { high: c.high, low: c.low });
+        candleMapRef.current = map;
+        (markersPluginRef.current as OrderMarkersPrimitive | null)?.setCandleMap(map);
+
         // Live WebSocket
         const ws = new WebSocket(
           `wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`
@@ -440,13 +479,17 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
           try {
             const msg = JSON.parse(event.data as string);
             const k = msg.k;
+            const t = Math.floor((k.t as number) / 1000);
+            const hi = parseFloat(k.h as string);
+            const lo = parseFloat(k.l as string);
             seriesRef.current?.update({
-              time: Math.floor((k.t as number) / 1000) as Time,
+              time: t as Time,
               open: parseFloat(k.o as string),
-              high: parseFloat(k.h as string),
-              low: parseFloat(k.l as string),
+              high: hi,
+              low: lo,
               close: parseFloat(k.c as string),
             });
+            candleMapRef.current.set(t, { high: hi, low: lo });
           } catch {}
         };
 

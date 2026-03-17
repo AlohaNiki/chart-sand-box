@@ -500,7 +500,7 @@ export default function App() {
                         onChange={(e) => setShowOrders(e.target.checked)}
                         className="cursor-pointer"
                       />
-                      Show history orders
+                      History Markers
                     </label>
                   </div>
 
