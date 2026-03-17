@@ -172,6 +172,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       timeScale: {
         borderColor: css("--border"),
         timeVisible: false,
+        rightOffset: 10,
       },
       width: container.clientWidth,
       height: container.clientHeight,
