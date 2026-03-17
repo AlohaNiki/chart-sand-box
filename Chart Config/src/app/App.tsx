@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ChartWidget, type PriceLineConfig } from "./components/chart-widget";
+import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
 import {
   RotateCcw,
@@ -108,11 +108,21 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
 // Static fallback used only for localStorage validation shape
 const BUILT_IN_IDS = new Set(["buy-order", "take-profit", "stop-loss", "liquidation"]);
 
+/** Default trade orders shown on first visit / after Reset */
+const DEFAULT_ORDERS: TradeOrder[] = [
+  { id: "order-1", time: 1761004800, price: 62500,  type: "buy"  }, // Oct 20, 2025
+  { id: "order-2", time: 1763942400, price: 96000,  type: "sell" }, // Nov 24, 2025
+  { id: "order-3", time: 1766534400, price: 101000, type: "sell" }, // Dec 23, 2025
+  { id: "order-4", time: 1770076800, price: 97500,  type: "buy"  }, // Feb 3,  2026
+];
+
 const STORAGE_KEYS = {
   theme: "chartConfig_theme",
   priceLines: "chartConfig_priceLines",
   chartBg: "chartConfig_chartBg",
   gridColor: "chartConfig_gridColor",
+  showOrders: "chartConfig_showOrders",
+  orders: "chartConfig_orders",
 } as const;
 
 let nextCustomId = 1;
@@ -190,6 +200,28 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.chartBg, chartBg); } catch {} }, [chartBg]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.gridColor, gridColor); } catch {} }, [gridColor]);
 
+  // ── Trade orders ──────────────────────────────────────────────────────────
+  const [showOrders, setShowOrders] = useState<boolean>(() => {
+    try { return localStorage.getItem(STORAGE_KEYS.showOrders) !== "false"; } catch { return true; }
+  });
+  const [orders, setOrders] = useState<TradeOrder[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.orders);
+      if (!stored) return DEFAULT_ORDERS;
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ORDERS;
+    } catch { return DEFAULT_ORDERS; }
+  });
+  const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
+
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
+
+  const handleOrderPlace = useCallback((order: TradeOrder) => {
+    setOrders((prev) => [...prev, order]);
+    setPendingOrderType(null);
+  }, []);
+
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -208,6 +240,8 @@ export default function App() {
     setPriceLines(DEFAULT_PRICE_LINES);
     setChartBg("--surface-elevation-1");
     setGridColor("--contrast-quaternary");
+    setOrders(DEFAULT_ORDERS);
+    setShowOrders(true);
   };
 
   const handleAddLevel = () => {
@@ -421,6 +455,11 @@ export default function App() {
                 theme={theme}
                 chartBg={chartBg}
                 gridColor={gridColor}
+                orders={orders}
+                showOrders={showOrders}
+                pendingOrderType={pendingOrderType}
+                onOrderPlace={handleOrderPlace}
+                onCancelPending={() => setPendingOrderType(null)}
               />
             </div>
           </div>
@@ -448,6 +487,69 @@ export default function App() {
                     </span>
                     <ColorTokenPicker value={gridColor} onChange={setGridColor} />
                   </div>
+
+                  {/* Show history orders toggle + add buttons */}
+                  <div className="flex items-center justify-between">
+                    <label
+                      className="flex items-center gap-[8px] cursor-pointer"
+                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={showOrders}
+                        onChange={(e) => setShowOrders(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      Show history orders
+                    </label>
+                  </div>
+
+                  {showOrders && (
+                    <div className="flex items-center gap-[6px]">
+                      <button
+                        onClick={() => setPendingOrderType(pendingOrderType === "buy" ? null : "buy")}
+                        className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
+                        style={{
+                          borderColor: "var(--positive-bg-default)",
+                          background: pendingOrderType === "buy" ? "var(--positive-bg-default)" : "transparent",
+                          color: pendingOrderType === "buy" ? "var(--positive-over)" : "var(--positive-bg-default)",
+                          fontFamily: "'Inter Display', sans-serif",
+                          fontSize: "var(--text-label)",
+                          fontWeight: "600",
+                        }}
+                      >
+                        + Buy
+                      </button>
+                      <button
+                        onClick={() => setPendingOrderType(pendingOrderType === "sell" ? null : "sell")}
+                        className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
+                        style={{
+                          borderColor: "var(--negative-bg-default)",
+                          background: pendingOrderType === "sell" ? "var(--negative-bg-default)" : "transparent",
+                          color: pendingOrderType === "sell" ? "var(--negative-over)" : "var(--negative-bg-default)",
+                          fontFamily: "'Inter Display', sans-serif",
+                          fontSize: "var(--text-label)",
+                          fontWeight: "600",
+                        }}
+                      >
+                        + Sell
+                      </button>
+                      {orders.length > 0 && (
+                        <button
+                          onClick={() => setOrders([])}
+                          className="px-[8px] py-[5px] rounded-[var(--radius-sm)] border border-border transition-colors cursor-pointer"
+                          style={{
+                            color: "var(--muted-foreground)",
+                            fontFamily: "'Inter Display', sans-serif",
+                            fontSize: "var(--text-label)",
+                          }}
+                          title="Clear all orders"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="h-px" style={{ background: "var(--border)" }} />

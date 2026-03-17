@@ -3,6 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { resolveColor } from "./price-line-editor";
 import {
   createChart,
+  createSeriesMarkers,
   ColorType,
   CandlestickSeries,
   type IChartApi,
@@ -12,6 +13,7 @@ import {
   type IPriceLine,
   type CreatePriceLineOptions,
   type PriceLineOptions,
+  type MouseEventParams,
 } from "lightweight-charts";
 
 // ── Binance data ──────────────────────────────────────────────────────────────
@@ -42,6 +44,13 @@ async function fetchKlines(
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface TradeOrder {
+  id: string;
+  time: number; // UTCTimestamp (seconds)
+  price: number;
+  type: "buy" | "sell";
+}
+
 export interface PriceLineConfig {
   id: string;
   label: string;
@@ -63,6 +72,11 @@ interface ChartWidgetProps {
   theme?: "dark" | "light";
   chartBg?: string;
   gridColor?: string;
+  orders?: TradeOrder[];
+  showOrders?: boolean;
+  pendingOrderType?: "buy" | "sell" | null;
+  onOrderPlace?: (order: TradeOrder) => void;
+  onCancelPending?: () => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -82,16 +96,21 @@ function rgba(rgbVar: string, alpha: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor }: ChartWidgetProps) {
+export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor, orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending }: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersPluginRef = useRef<any>(null);
 
   // Keep mutable refs for callbacks so event listeners always see latest values
   const priceLinesConfigRef = useRef<PriceLineConfig[]>(priceLines);
   const onPriceLineDragRef = useRef(onPriceLineDrag);
+  const onOrderPlaceRef = useRef(onOrderPlace);
+  const onCancelPendingRef = useRef(onCancelPending);
+  const pendingOrderTypeRef = useRef(pendingOrderType ?? null);
   const draggingIdRef = useRef<string | null>(null);
 
   // Interval state (persisted in localStorage)
@@ -109,13 +128,11 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   const [isLoading, setIsLoading] = useState(false);
   const [wsStatus, setWsStatus] = useState<WsStatus>("connecting");
 
-  useEffect(() => {
-    priceLinesConfigRef.current = priceLines;
-  }, [priceLines]);
-
-  useEffect(() => {
-    onPriceLineDragRef.current = onPriceLineDrag;
-  }, [onPriceLineDrag]);
+  useEffect(() => { priceLinesConfigRef.current = priceLines; }, [priceLines]);
+  useEffect(() => { onPriceLineDragRef.current = onPriceLineDrag; }, [onPriceLineDrag]);
+  useEffect(() => { onOrderPlaceRef.current = onOrderPlace; }, [onOrderPlace]);
+  useEffect(() => { onCancelPendingRef.current = onCancelPending; }, [onCancelPending]);
+  useEffect(() => { pendingOrderTypeRef.current = pendingOrderType ?? null; }, [pendingOrderType]);
 
   // ── Save interval to localStorage ─────────────────────────────────────────
   useEffect(() => {
@@ -171,6 +188,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
     chartRef.current = chart;
     seriesRef.current = series;
+    markersPluginRef.current = createSeriesMarkers(series, []);
     setChartReady(true);
 
     // --- Drag-on-chart logic ---
@@ -217,7 +235,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         }
       } else {
         const nearId = findNearestLine(e.clientY);
-        container.style.cursor = nearId ? "ns-resize" : "";
+        container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : nearId ? "ns-resize" : "";
       }
     };
 
@@ -252,6 +270,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      markersPluginRef.current = null;
       priceLinesRef.current.clear();
       setChartReady(false);
     };
@@ -426,6 +445,59 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     }
   }, [priceLines, theme]);
 
+  // ── Sync trade order markers ──────────────────────────────────────────────
+  useEffect(() => {
+    const plugin = markersPluginRef.current;
+    if (!plugin || !chartReady) return;
+    if (!showOrders || !orders?.length) {
+      plugin.setMarkers([]);
+      return;
+    }
+    plugin.setMarkers(
+      orders.map((o) => ({
+        id: o.id,
+        time: o.time as Time,
+        price: o.price,
+        position: "atPriceMiddle" as const,
+        shape: "circle" as const,
+        color: o.type === "buy" ? css("--positive-bg-default") : css("--negative-bg-default"),
+        text: o.type === "buy" ? "B" : "S",
+        size: 1.5,
+      }))
+    );
+  }, [orders, showOrders, theme, chartReady]);
+
+  // ── Click-to-place order ───────────────────────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series || !pendingOrderType || !chartReady) return;
+
+    const handler = (param: MouseEventParams<Time>) => {
+      if (!param.time || !param.point) return;
+      if (draggingIdRef.current) return;
+      const price = series.coordinateToPrice(param.point.y);
+      if (price === null) return;
+      onOrderPlaceRef.current?.({
+        id: `order-${Date.now()}`,
+        time: param.time as unknown as number,
+        price: Math.round(Number(price) * 100) / 100,
+        type: pendingOrderTypeRef.current!,
+      });
+    };
+
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancelPendingRef.current?.();
+    };
+
+    chart.subscribeClick(handler);
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      chart.unsubscribeClick(handler);
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [pendingOrderType, chartReady]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
@@ -496,6 +568,24 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         />
         {wsStatus === "live" ? "LIVE" : wsStatus === "connecting" ? "..." : "OFFLINE"}
       </div>
+
+      {/* Pending order placement banner */}
+      {pendingOrderType && (
+        <div
+          className="absolute top-[44px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-[8px] px-[12px] py-[6px] rounded-[var(--radius)] pointer-events-none"
+          style={{
+            background: pendingOrderType === "buy" ? css("--positive-bg-default") : css("--negative-bg-default"),
+            color: pendingOrderType === "buy" ? css("--positive-over") : css("--negative-over"),
+            fontFamily: "'Inter Display', sans-serif",
+            fontSize: "var(--text-label)",
+            fontWeight: "600",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}
+        >
+          {pendingOrderType === "buy" ? "↑ Click to place Buy order" : "↓ Click to place Sell order"}
+          <span style={{ opacity: 0.7, fontWeight: 400 }}>· ESC to cancel</span>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (
