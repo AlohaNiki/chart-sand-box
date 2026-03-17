@@ -66,7 +66,7 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     color: "--contrast-tertiary",
     labelColor: "--surface-elevation-3",
     labelTextColor: "--contrast-primary",
-    lineWidth: 0.5,
+    lineWidth: 1,
     lineStyle: 0,
     visible: true,
   },
@@ -77,7 +77,7 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     color: "--contrast-tertiary",
     labelColor: "--surface-elevation-3",
     labelTextColor: "--contrast-primary",
-    lineWidth: 0.5,
+    lineWidth: 1,
     lineStyle: 0,
     visible: true,
   },
@@ -88,7 +88,7 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     color: "--contrast-tertiary",
     labelColor: "--surface-elevation-3",
     labelTextColor: "--contrast-primary",
-    lineWidth: 0.5,
+    lineWidth: 1,
     lineStyle: 0,
     visible: true,
   },
@@ -184,7 +184,7 @@ export default function App() {
     try { return localStorage.getItem(STORAGE_KEYS.chartBg) || "--surface-canvas"; } catch { return "--surface-canvas"; }
   });
   const [gridColor, setGridColor] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEYS.gridColor) || "--border"; } catch { return "--border"; }
+    try { return localStorage.getItem(STORAGE_KEYS.gridColor) || "--contrast-quaternary"; } catch { return "--contrast-quaternary"; }
   });
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.chartBg, chartBg); } catch {} }, [chartBg]);
