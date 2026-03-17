@@ -28,17 +28,24 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.closePath();
 }
 
+interface MarkerHitBox {
+  orderId: string;
+  x: number; y: number; w: number; h: number; // CSS px
+}
+
 class OrderMarkersRenderer {
   orders: TradeOrder[] = [];
   series: ISeriesApi<"Candlestick"> | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   chart: any = null;
   candleMap: Map<number, { high: number; low: number }> = new Map();
+  hitBoxes: MarkerHitBox[] = [];
 
   draw(target: CanvasRenderingTarget2D): void {
     const { series, chart } = this;
     if (!series || !chart) return;
 
+    this.hitBoxes = [];
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
       // Font: 10px Medium
       const FONT_SIZE = 10 * hpr;
@@ -77,6 +84,14 @@ class OrderMarkersRenderer {
 
         const bgColor  = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
         const txtColor = isBuy ? css("--positive-over")       : css("--negative-over");
+
+        // Store hit box in CSS px for click detection
+        const boxW = W / hpr, boxH = H / vpr, tailPx = TAIL / vpr, gapPx = GAP / vpr;
+        if (isBuy) {
+          this.hitBoxes.push({ orderId: order.id, x: cx - boxW / 2, y: cy + gapPx,               w: boxW, h: tailPx + boxH });
+        } else {
+          this.hitBoxes.push({ orderId: order.id, x: cx - boxW / 2, y: cy - gapPx - tailPx - boxH, w: boxW, h: tailPx + boxH });
+        }
 
         ctx.save();
         ctx.fillStyle = bgColor;
@@ -164,6 +179,9 @@ class OrderMarkersPrimitive {
     this._renderer.candleMap = map;
     this._requestUpdate?.();
   }
+
+  getHitBoxes() { return this._renderer.hitBoxes; }
+  getOrders()   { return this._orders; }
 }
 
 // ── Binance data ──────────────────────────────────────────────────────────────
@@ -209,6 +227,19 @@ export interface TradeOrder {
   time: number; // UTCTimestamp (seconds)
   price: number;
   type: "buy" | "sell";
+  // Optional detail fields (shown in popup)
+  closePrice?: number;
+  leverage?: number;
+  amount?: number;
+  volume?: number;
+  pnl?: number;
+  pnlPercent?: number;
+  transactionId?: string;
+  operation?: "Long" | "Short";
+  takeProfit?: number;
+  stopLoss?: number;
+  openTime?: number;
+  closeTime?: number;
 }
 
 export interface PriceLineConfig {
@@ -237,6 +268,7 @@ interface ChartWidgetProps {
   pendingOrderType?: "buy" | "sell" | null;
   onOrderPlace?: (order: TradeOrder) => void;
   onCancelPending?: () => void;
+  onOrderClick?: (order: TradeOrder) => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -256,7 +288,7 @@ function rgba(rgbVar: string, alpha: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor, orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending }: ChartWidgetProps) {
+export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor, orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick }: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -271,6 +303,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   const onPriceLineDragRef = useRef(onPriceLineDrag);
   const onOrderPlaceRef = useRef(onOrderPlace);
   const onCancelPendingRef = useRef(onCancelPending);
+  const onOrderClickRef = useRef(onOrderClick);
   const pendingOrderTypeRef = useRef(pendingOrderType ?? null);
   const draggingIdRef = useRef<string | null>(null);
 
@@ -293,6 +326,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   useEffect(() => { onPriceLineDragRef.current = onPriceLineDrag; }, [onPriceLineDrag]);
   useEffect(() => { onOrderPlaceRef.current = onOrderPlace; }, [onOrderPlace]);
   useEffect(() => { onCancelPendingRef.current = onCancelPending; }, [onCancelPending]);
+  useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
   useEffect(() => { pendingOrderTypeRef.current = pendingOrderType ?? null; }, [pendingOrderType]);
 
   // ── Save interval to localStorage ─────────────────────────────────────────
@@ -660,6 +694,29 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       window.removeEventListener("keydown", onEsc);
     };
   }, [pendingOrderType, chartReady]);
+
+  // ── Click on order marker → show detail popup ─────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !chartReady) return;
+
+    const handler = (param: MouseEventParams<Time>) => {
+      if (!param.point || pendingOrderTypeRef.current) return;
+      const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
+      if (!plugin) return;
+      const { x, y } = param.point;
+      const hit = plugin.getHitBoxes().find(
+        (hb) => x >= hb.x && x <= hb.x + hb.w && y >= hb.y && y <= hb.y + hb.h
+      );
+      if (hit) {
+        const order = plugin.getOrders().find((o) => o.id === hit.orderId);
+        if (order) onOrderClickRef.current?.(order);
+      }
+    };
+
+    chart.subscribeClick(handler);
+    return () => chart.unsubscribeClick(handler);
+  }, [chartReady]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

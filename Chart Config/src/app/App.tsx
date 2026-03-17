@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
+import { OrderDetailModal } from "./components/order-detail-modal";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
 import {
   RotateCcw,
@@ -110,10 +111,34 @@ const BUILT_IN_IDS = new Set(["buy-order", "take-profit", "stop-loss", "liquidat
 
 /** Default trade orders shown on first visit / after Reset */
 const DEFAULT_ORDERS: TradeOrder[] = [
-  { id: "order-1", time: 1761004800, price: 62500,  type: "buy"  }, // Oct 20, 2025
-  { id: "order-2", time: 1763942400, price: 96000,  type: "sell" }, // Nov 24, 2025
-  { id: "order-3", time: 1766534400, price: 101000, type: "sell" }, // Dec 23, 2025
-  { id: "order-4", time: 1770076800, price: 97500,  type: "buy"  }, // Feb 3,  2026
+  {
+    id: "order-1", time: 1761004800, price: 62500, type: "buy",
+    closePrice: 74800, leverage: 10, amount: 0.1, volume: 625,
+    pnl: 1230, pnlPercent: 19.7, transactionId: "10234521",
+    operation: "Long", takeProfit: 78000, stopLoss: 59000,
+    openTime: 1761004800, closeTime: 1761264000,
+  },
+  {
+    id: "order-2", time: 1763942400, price: 96000, type: "sell",
+    closePrice: 87500, leverage: 5, amount: 0.1, volume: 960,
+    pnl: 850, pnlPercent: 8.9, transactionId: "10456783",
+    operation: "Short", takeProfit: 85000, stopLoss: 101000,
+    openTime: 1763942400, closeTime: 1764115200,
+  },
+  {
+    id: "order-3", time: 1766534400, price: 101000, type: "sell",
+    closePrice: 95200, leverage: 5, amount: 0.05, volume: 505,
+    pnl: 290, pnlPercent: 5.7, transactionId: "10589341",
+    operation: "Short", takeProfit: 93000, stopLoss: 106000,
+    openTime: 1766534400, closeTime: 1767225600,
+  },
+  {
+    id: "order-4", time: 1770076800, price: 97500, type: "buy",
+    closePrice: 84000, leverage: 10, amount: 0.1, volume: 975,
+    pnl: -1350, pnlPercent: -13.8, transactionId: "10712984",
+    operation: "Long", takeProfit: 110000, stopLoss: 90000,
+    openTime: 1770076800, closeTime: 1771286400,
+  },
 ];
 
 const STORAGE_KEYS = {
@@ -213,6 +238,7 @@ export default function App() {
     } catch { return DEFAULT_ORDERS; }
   });
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -460,6 +486,7 @@ export default function App() {
                 pendingOrderType={pendingOrderType}
                 onOrderPlace={handleOrderPlace}
                 onCancelPending={() => setPendingOrderType(null)}
+                onOrderClick={setSelectedOrder}
               />
             </div>
           </div>
@@ -665,6 +692,9 @@ export default function App() {
             </aside>
         </div>
       </div>
+      {selectedOrder && (
+        <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
       <SpeedInsights />
     </DndProvider>
   );
