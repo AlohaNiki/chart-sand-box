@@ -40,8 +40,20 @@ class OrderMarkersRenderer {
     if (!series || !chart) return;
 
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
-      // Dimensions in CSS px → scale to bitmap px
-      const W = 22 * hpr, H = 22 * hpr, TAIL = 7 * vpr, R = 3 * hpr;
+      // Font: 10px Medium
+      const FONT_SIZE = 10 * hpr;
+      ctx.font = `500 ${FONT_SIZE}px "Inter Display", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // Badge dimensions: padding 5px left/right, 2px top/bottom
+      const PAD_H = 5 * hpr;  // horizontal padding
+      const PAD_V = 2 * vpr;  // vertical padding
+      const charW = ctx.measureText("B").width; // measure at current font
+      const W = charW + PAD_H * 2;
+      const H = FONT_SIZE + PAD_V * 2;
+
+      const TAIL = 7 * vpr, R = 3 * hpr;
       const GAP = 4 * vpr;          // gap between wick tip and tail tip
       const HALF_TW = 5 * hpr;      // half-width of triangle base
 
@@ -87,9 +99,6 @@ class OrderMarkersRenderer {
           ctx.fill();
           // Label
           ctx.fillStyle = txtColor;
-          ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
           ctx.fillText("B", x, baseY + H / 2);
         } else {
           // Marker ABOVE candle high wick, tail points DOWN toward the wick
@@ -109,9 +118,6 @@ class OrderMarkersRenderer {
           ctx.fill();
           // Label
           ctx.fillStyle = txtColor;
-          ctx.font = `bold ${12 * hpr}px "Inter Display", sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
           ctx.fillText("S", x, baseY - H / 2);
         }
 
