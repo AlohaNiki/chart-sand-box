@@ -4,6 +4,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
+import { ChangelogPanel } from "./components/changelog-panel";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
 import {
   RotateCcw,
@@ -12,6 +13,7 @@ import {
   Upload,
   Sun,
   Moon,
+  ScrollText,
 } from "lucide-react";
 
 /** Default price lines (used on first visit and on Reset) */
@@ -239,6 +241,7 @@ export default function App() {
   });
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -452,6 +455,14 @@ export default function App() {
             >
               <RotateCcw size={14} style={{ color: "var(--muted-foreground)" }} />
               Reset
+            </button>
+            <button
+              onClick={() => setShowChangelog(true)}
+              className="flex items-center justify-center w-[32px] h-[32px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+              style={{ color: "var(--muted-foreground)" }}
+              title="What's new"
+            >
+              <ScrollText size={14} />
             </button>
             <button
               onClick={toggleTheme}
@@ -694,6 +705,9 @@ export default function App() {
       </div>
       {selectedOrder && (
         <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
+      {showChangelog && (
+        <ChangelogPanel onClose={() => setShowChangelog(false)} />
       )}
       <SpeedInsights />
     </DndProvider>
