@@ -181,7 +181,7 @@ export default function App() {
 
   // ── Chart appearance settings ─────────────────────────────────────────────
   const [chartBg, setChartBg] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEYS.chartBg) || "--surface-canvas"; } catch { return "--surface-canvas"; }
+    try { return localStorage.getItem(STORAGE_KEYS.chartBg) || "--surface-elevation-1"; } catch { return "--surface-elevation-1"; }
   });
   const [gridColor, setGridColor] = useState<string>(() => {
     try { return localStorage.getItem(STORAGE_KEYS.gridColor) || "--contrast-quaternary"; } catch { return "--contrast-quaternary"; }
@@ -206,7 +206,7 @@ export default function App() {
     if (!window.confirm("Reset all price lines and chart settings to defaults? This cannot be undone.")) return;
     setImportMessage(null);
     setPriceLines(DEFAULT_PRICE_LINES);
-    setChartBg("--surface-canvas");
+    setChartBg("--surface-elevation-1");
     setGridColor("--contrast-quaternary");
   };
 
