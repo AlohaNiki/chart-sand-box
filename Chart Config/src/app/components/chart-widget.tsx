@@ -85,12 +85,18 @@ class OrderMarkersRenderer {
         const bgColor  = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
         const txtColor = isBuy ? css("--positive-over")       : css("--negative-over");
 
-        // Store hit box in CSS px for click detection
+        // Store hit box in CSS px for click detection (expanded to min 32×32 for easy tapping)
         const boxW = W / hpr, boxH = H / vpr, tailPx = TAIL / vpr, gapPx = GAP / vpr;
+        const HIT_MIN = 32;
+        const rawHitW = boxW, rawHitH = tailPx + boxH;
+        const hitW = Math.max(rawHitW, HIT_MIN);
+        const hitH = Math.max(rawHitH, HIT_MIN);
+        const dw = (hitW - rawHitW) / 2;
+        const dh = (hitH - rawHitH) / 2;
         if (isBuy) {
-          this.hitBoxes.push({ orderId: order.id, x: cx - boxW / 2, y: cy + gapPx,               w: boxW, h: tailPx + boxH });
+          this.hitBoxes.push({ orderId: order.id, x: cx - hitW / 2, y: cy + gapPx - dh,                    w: hitW, h: hitH });
         } else {
-          this.hitBoxes.push({ orderId: order.id, x: cx - boxW / 2, y: cy - gapPx - tailPx - boxH, w: boxW, h: tailPx + boxH });
+          this.hitBoxes.push({ orderId: order.id, x: cx - hitW / 2, y: cy - gapPx - tailPx - boxH - dh,    w: hitW, h: hitH });
         }
 
         ctx.save();
@@ -432,8 +438,15 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
           );
         }
       } else {
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
+        const onMarker = plugin?.getHitBoxes().some(
+          (hb) => mx >= hb.x && mx <= hb.x + hb.w && my >= hb.y && my <= hb.y + hb.h
+        ) ?? false;
         const nearId = findNearestLine(e.clientY);
-        container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : nearId ? "ns-resize" : "";
+        container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : onMarker ? "pointer" : nearId ? "ns-resize" : "";
       }
     };
 
