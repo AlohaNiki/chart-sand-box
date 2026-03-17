@@ -167,6 +167,16 @@ type Interval = (typeof INTERVALS)[number];
 
 const INTERVAL_STORAGE_KEY = "chartConfig_interval";
 
+/** Default number of candles visible on load (rest available via scroll) */
+const INTERVAL_DEFAULT_VISIBLE: Record<Interval, number> = {
+  "1d":  100,  // ~3 months
+  "4h":  90,   // ~15 days
+  "1h":  120,  // ~5 days
+  "15m": 128,  // ~32 hours
+  "5m":  144,  // ~12 hours
+  "1m":  120,  // ~2 hours
+};
+
 async function fetchKlines(
   interval: Interval,
   signal: AbortSignal
@@ -455,7 +465,11 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         if (cancelled) return;
 
         series.setData(candles);
-        chart.timeScale().fitContent();
+        const visible = INTERVAL_DEFAULT_VISIBLE[interval];
+        chart.timeScale().setVisibleLogicalRange({
+          from: candles.length - visible,
+          to:   candles.length - 1 + 10, // +10 matches rightOffset
+        });
         setIsLoading(false);
 
         // Build candle map for order marker positioning
