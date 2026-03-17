@@ -322,7 +322,7 @@ export function ColorTokenPicker({ label, value, onChange }: ColorTokenPickerPro
 
 // ── Line Width / Style options ────────────────────────────────────────────────
 
-const LINE_WIDTH_OPTIONS = [0.5, 1, 2, 3, 4];
+const LINE_WIDTH_OPTIONS = [0.5, 1.0, 1.5, 2.0];
 const LINE_STYLE_OPTIONS = [
   { value: 0, label: "Solid" },
   { value: 1, label: "Dotted" },
