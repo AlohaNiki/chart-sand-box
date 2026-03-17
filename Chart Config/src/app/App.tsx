@@ -534,52 +534,6 @@ export default function App() {
                   <Plus size={16} style={{ color: "var(--muted-foreground)" }} />
                   Add Custom Level
                 </button>
-
-                {/* Legend */}
-                <div
-                  className="mt-[8px] p-[12px] rounded-[var(--radius)] border border-border"
-                  style={{ background: "var(--muted)" }}
-                >
-                  <p
-                    className="mb-[8px]"
-                    style={{
-                      color: "var(--muted-foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                      fontSize: "var(--text-label)",
-                      fontWeight: "var(--font-weight-medium)",
-                    }}
-                  >
-                    Line Styles
-                  </p>
-                  <div className="flex flex-col gap-[6px]">
-                    {[
-                      { style: "solid", label: "0 \u2014 Solid" },
-                      { style: "dotted", label: "1 \u2014 Dotted" },
-                      { style: "dashed", label: "2 \u2014 Dashed" },
-                    ].map((item) => (
-                      <div
-                        key={item.style}
-                        className="flex items-center gap-[8px]"
-                      >
-                        <div
-                          className="w-[40px] h-0"
-                          style={{
-                            borderTop: `2px ${item.style} var(--muted-foreground)`,
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "var(--muted-foreground)",
-                            fontFamily: "'Inter Display', sans-serif",
-                            fontSize: "var(--text-label)",
-                          }}
-                        >
-                          {item.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </aside>
         </div>
