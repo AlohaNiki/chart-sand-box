@@ -205,6 +205,8 @@ export default function App() {
   const handleReset = () => {
     setImportMessage(null);
     setPriceLines(DEFAULT_PRICE_LINES);
+    setChartBg("--surface-canvas");
+    setGridColor("--contrast-quaternary");
   };
 
   const handleAddLevel = () => {
