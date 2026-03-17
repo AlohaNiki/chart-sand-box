@@ -53,7 +53,6 @@ export interface PriceLineConfig {
   labelTextColor: string;
   lineWidth: number;
   lineStyle: number; // 0=solid, 1=dotted, 2=dashed, 3=large dashed, 4=sparse dotted
-  labelBorder: boolean;
   visible: boolean;
 }
 
@@ -413,7 +412,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         lineStyle: config.lineStyle,
         axisLabelVisible: true,
         title: config.label,
-        axisLabelColor: config.labelBorder ? resolveColor(config.color) : resolveColor(config.labelColor),
+        axisLabelColor: resolveColor(config.labelColor),
         axisLabelTextColor: resolveColor(config.labelTextColor),
       };
 

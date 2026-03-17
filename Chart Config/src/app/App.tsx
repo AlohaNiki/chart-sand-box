@@ -24,7 +24,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--positive-text-and-icons",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -36,7 +35,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--positive-over",
     lineWidth: 1,
     lineStyle: 2,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -48,7 +46,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--negative-over",
     lineWidth: 1,
     lineStyle: 2,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -60,7 +57,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--negative-text-and-icons",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -72,7 +68,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--contrast-primary",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -84,7 +79,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--contrast-primary",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -96,7 +90,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--contrast-primary",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
   {
@@ -108,7 +101,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
     labelTextColor: "--warning-over",
     lineWidth: 1,
     lineStyle: 0,
-    labelBorder: false,
     visible: true,
   },
 ];
@@ -176,10 +168,7 @@ export default function App() {
       if (!stored) return DEFAULT_PRICE_LINES;
       const parsed = JSON.parse(stored);
       if (!Array.isArray(parsed)) return DEFAULT_PRICE_LINES;
-      const validated = parsed.filter(isValidPriceLine).map((pl: PriceLineConfig) => ({
-        ...pl,
-        labelBorder: pl.labelBorder ?? false,
-      }));
+      const validated = parsed.filter(isValidPriceLine);
       return validated.length > 0 ? validated : DEFAULT_PRICE_LINES;
     } catch {
       return DEFAULT_PRICE_LINES;
@@ -233,7 +222,6 @@ export default function App() {
       labelTextColor: "--accent-over",
       lineWidth: 1,
       lineStyle: 2,
-      labelBorder: false,
       visible: true,
     };
     setPriceLines((prev) => [...prev, newLine]);

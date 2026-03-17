@@ -549,17 +549,6 @@ export function PriceLineEditor({
             onChange={(c) => onChange({ ...config, labelTextColor: c })}
           />
 
-          {/* Badge Border */}
-          <div className="flex items-center gap-[8px]">
-            <label className="w-[80px] shrink-0" style={labelStyle}>Badge Border</label>
-            <input
-              type="checkbox"
-              checked={config.labelBorder ?? false}
-              onChange={(e) => onChange({ ...config, labelBorder: e.target.checked })}
-              className="cursor-pointer"
-            />
-          </div>
-
           {/* Line Width */}
           <div className="flex items-center gap-[8px]">
             <label className="w-[80px] shrink-0" style={labelStyle}>Width</label>
