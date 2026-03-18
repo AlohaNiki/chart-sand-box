@@ -789,43 +789,42 @@ export function ChartWidget({
     <div className="relative w-full h-full min-h-[400px]" style={{ fontFamily: "'Inter Display', sans-serif" }}>
       <div ref={chartContainerRef} className="w-full h-full" />
 
-      {/* Interval selector + reset + indicators */}
-      <div className="absolute top-[8px] left-[8px] flex flex-col gap-[4px] z-10">
-        {/* Row 1: timeframe + reset */}
-        <div className="flex items-center gap-[4px]">
-          <div
-            className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
-            style={{ background: "var(--secondary)" }}
-          >
-            {INTERVALS.map((iv) => (
-              <button
-                key={iv}
-                onClick={() => setInterval(iv)}
-                className="px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
-                style={{
-                  fontSize: "var(--text-label)",
-                  background: interval === iv ? "var(--card)" : "transparent",
-                  color: interval === iv ? "var(--foreground)" : "var(--muted-foreground)",
-                  fontWeight: interval === iv ? "600" : "400",
-                }}
-              >
-                {iv.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => chartRef.current?.timeScale().fitContent()}
-            className="flex items-center justify-center w-[26px] h-[26px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
-            style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}
-            title="Reset chart view"
-          >
-            <RefreshCw size={12} />
-          </button>
-        </div>
-
-        {/* Row 2: indicator toggles */}
+      {/* Interval selector + reset — top left */}
+      <div className="absolute top-[8px] left-[8px] flex items-center gap-[4px] z-10">
         <div
-          className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px] w-fit"
+          className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
+          style={{ background: "var(--secondary)" }}
+        >
+          {INTERVALS.map((iv) => (
+            <button
+              key={iv}
+              onClick={() => setInterval(iv)}
+              className="px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+              style={{
+                fontSize: "var(--text-label)",
+                background: interval === iv ? "var(--card)" : "transparent",
+                color: interval === iv ? "var(--foreground)" : "var(--muted-foreground)",
+                fontWeight: interval === iv ? "600" : "400",
+              }}
+            >
+              {iv.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => chartRef.current?.timeScale().fitContent()}
+          className="flex items-center justify-center w-[26px] h-[26px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+          style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}
+          title="Reset chart view"
+        >
+          <RefreshCw size={12} />
+        </button>
+      </div>
+
+      {/* Indicator toggles — bottom center */}
+      <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 z-10">
+        <div
+          className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
           style={{ background: "var(--secondary)" }}
         >
           {INDICATOR_DEFS.map(({ key, label, color }) => {
