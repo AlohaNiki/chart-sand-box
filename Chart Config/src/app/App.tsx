@@ -447,7 +447,7 @@ export default function App() {
             className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
             style={{ background: "var(--secondary)" }}
           >
-            {(["lightweight", "supercharts", "klinechart"] as const).map((mode) => (
+            {(["lightweight", "klinechart", "supercharts"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setChartMode(mode)}
@@ -548,6 +548,18 @@ export default function App() {
               className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-border overflow-y-auto"
               style={{ background: "var(--sidebar)" }}
             >
+              {chartMode === "supercharts" ? (
+                <div className="h-full flex flex-col items-center justify-center gap-[12px] p-[24px] text-center">
+                  <span style={{ fontSize: "32px" }}>🔒</span>
+                  <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
+                    Settings unavailable
+                  </h4>
+                  <p style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", lineHeight: "1.5" }}>
+                    Chart customization will be available once we get access to the TradingView Charting Library.
+                    The library requires a formal approval process with TradingView.
+                  </p>
+                </div>
+              ) : (
               <div className="p-[16px] flex flex-col gap-[12px]">
                 {/* Chart Settings */}
                 <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
@@ -741,6 +753,7 @@ export default function App() {
                   Add Custom Level
                 </button>
               </div>
+              )}
             </aside>
         </div>
       </div>
