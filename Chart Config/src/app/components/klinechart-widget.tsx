@@ -29,23 +29,23 @@ function ensureOverlaysRegistered() {
     needDefaultYAxisFigure: false,
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const label = typeof overlay.extendData === "string" ? overlay.extendData : "";
+      const value = (overlay.points as Array<{ value?: number }>)[0]?.value ?? 0;
+      const priceStr = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const displayText = label ? `${label}  ${priceStr}` : priceStr;
       const y = coordinates[0]?.y ?? 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const figs: any[] = [
+      return [
         {
           type: "line",
           attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
           ignoreEvent: true,
         },
-      ];
-      if (label) {
-        figs.push({
+        {
           type: "text",
-          attrs: { x: bounding.width - 6, y, text: label, align: "right", baseline: "middle" },
+          attrs: { x: bounding.width - 6, y, text: displayText, align: "right", baseline: "middle" },
           ignoreEvent: true,
-        });
-      }
-      return figs;
+        },
+      ] as any[];
     },
   });
 }
