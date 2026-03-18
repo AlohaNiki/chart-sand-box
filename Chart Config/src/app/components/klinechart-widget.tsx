@@ -295,28 +295,29 @@ export function KlineChartWidget({
     chart.setPeriod(intervalToPeriod(interval));
 
     // ── Click-to-place order ──────────────────────────────────────────────────
-    const onCandleClick = (data: unknown) => {
+    // We use a native click listener on the container so we always have the
+    // real cursor y (price). subscribeAction("onCandleBarClick") only gives
+    // the candle x — it never carries the y coordinate.
+    const onClick = (e: MouseEvent) => {
       if (!pendingTypeRef.current) return;
-      const ch = data as { x?: number; y?: number; timestamp?: number };
-      if (ch.x === undefined || ch.y === undefined) return;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pts = chart.convertFromPixel([{ x: ch.x, y: ch.y }]) as any;
+      const pts = chart.convertFromPixel([{ x, y }]) as any;
       const pt  = Array.isArray(pts) ? pts[0] : pts;
-      if (!pt || pt.value === undefined) return;
-
-      const ts = ch.timestamp ?? pt.timestamp;
-      if (!ts) return;
+      if (!pt || pt.value === undefined || !pt.timestamp) return;
 
       onOrderPlaceRef.current?.({
         id:    `order-${Date.now()}`,
-        time:  Math.floor(ts / 1000),
+        time:  Math.floor(Number(pt.timestamp) / 1000),
         price: Math.round(Number(pt.value) * 100) / 100,
         type:  pendingTypeRef.current,
       });
     };
 
-    chart.subscribeAction("onCandleBarClick", onCandleClick);
+    container.addEventListener("click", onClick);
 
     // ── Cursor ────────────────────────────────────────────────────────────────
     const onPointerMove = () => {
@@ -331,7 +332,7 @@ export function KlineChartWidget({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      chart.unsubscribeAction("onCandleBarClick", onCandleClick);
+      container.removeEventListener("click", onClick);
       container.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("keydown", onKeyDown);
       wsRef.current?.close();
