@@ -529,6 +529,13 @@ function applyStyles(
         upWickColor:         upColor,   downWickColor:       downColor,
         noChangeWickColor:   css("--muted-foreground"),
       },
+      tooltip: {
+        // hide the "{ticker} 4H" title line — we already show interval in our own UI
+        title: { show: false },
+        // push OHLCV rows down below the interval selector bar (~36px)
+        offsetTop: 40,
+        legend: { color: textColor },
+      },
     },
     xAxis: { tickText: { color: textColor }, tickLine: { color: gridClr }, axisLine: { color: gridClr } },
     yAxis: { tickText: { color: textColor }, tickLine: { color: gridClr }, axisLine: { color: gridClr } },
