@@ -10,8 +10,19 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.13",
+    date: "Mar 18, 2026",
+    title: "KLineChart indicators",
+    items: [
+      "EMA 20, EMA 50, RSI 14 toggles added to KLineChart interval bar",
+      "EMA lines rendered directly on the main pane via klinecharts built-in indicators",
+      "RSI opens in a separate sub-pane below the chart",
+      "Changelog bullet points replaced with compact round dots",
+    ],
+  },
+  {
     version: "0.12",
-    date: "Mar 17, 2026",
+    date: "Mar 18, 2026",
     title: "KLineChart polish & sidebar UX",
     items: [
       "Tab order changed to Lightweight → KLineChart → SuperCharts",
@@ -23,7 +34,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.11",
-    date: "Mar 17, 2026",
+    date: "Mar 18, 2026",
     title: "KLineChart order markers parity",
     items: [
       "Custom buyMarker / sellMarker overlays: badge below low (↑ tail) and above high (↓ tail)",
@@ -35,7 +46,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.10",
-    date: "Mar 17, 2026",
+    date: "Mar 18, 2026",
     title: "KLineChart price lines & colors",
     items: [
       "Custom labeledPriceLine overlay shows label + price value on right edge",
@@ -45,7 +56,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.9",
-    date: "Mar 17, 2026",
+    date: "Mar 18, 2026",
     title: "KLineChart — third chart mode",
     items: [
       "KLineChart added as third option in the header toggle",
@@ -56,7 +67,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.8",
-    date: "Mar 17, 2026",
+    date: "Mar 18, 2026",
     title: "SuperCharts — TradingView embed",
     items: [
       "SuperCharts added as second chart mode via TradingView Advanced Chart iframe",
@@ -122,7 +133,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.2",
-    date: "Mar 17, 2026",
+    date: "Mar 16, 2026",
     title: "Chart appearance settings",
     items: [
       "Chart background color picker (default: Surface/Elevation-1)",
@@ -133,7 +144,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "0.1",
-    date: "Mar 17, 2026",
+    date: "Mar 11, 2026",
     title: "Initial release",
     items: [
       "Live BTC/USDT candlestick chart via Binance WebSocket",
@@ -269,7 +280,7 @@ function PanelContent({ onClose }: { onClose: () => void }) {
             <ul className="flex flex-col gap-[5px]">
               {entry.items.map((item, i) => (
                 <li key={i} className="flex items-start gap-[8px]">
-                  <span style={{ color: "var(--muted-foreground)", marginTop: 1, flexShrink: 0 }}>–</span>
+                  <span style={{ color: "var(--muted-foreground)", marginTop: "5px", flexShrink: 0, fontSize: "6px", lineHeight: 1 }}>●</span>
                   <span style={{ color: "var(--muted-foreground)", fontSize: "13px", fontFamily: "'Inter Display', sans-serif", lineHeight: "1.5" }}>
                     {item}
                   </span>

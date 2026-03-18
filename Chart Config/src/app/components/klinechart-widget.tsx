@@ -124,6 +124,16 @@ function ensureOverlaysRegistered() {
   });
 }
 
+// ── Indicator definitions ─────────────────────────────────────────────────────
+
+const INDICATOR_DEFS = [
+  { key: "ema20" as const, label: "EMA 20", color: "#F59E0B" },
+  { key: "ema50" as const, label: "EMA 50", color: "#8B5CF6" },
+  { key: "rsi"   as const, label: "RSI 14", color: "#3B82F6" },
+];
+
+interface IndicatorState { ema20: boolean; ema50: boolean; rsi: boolean }
+
 // ── Interval / Period mapping ─────────────────────────────────────────────────
 
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
@@ -224,6 +234,10 @@ export function KlineChartWidget({
 
   const [wsStatus, setWsStatus] = useState<WsStatus>("connecting");
 
+  const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
+  const rsiPaneIdRef = useRef<string | null>(null);
+  const [chartReady, setChartReady] = useState(false);
+
   const plIds        = useRef<Set<string>>(new Set());
   const orderIds     = useRef<Set<string>>(new Set());
   const orderDataMap = useRef<Map<string, TradeOrder>>(new Map());
@@ -240,6 +254,7 @@ export function KlineChartWidget({
     chartRef.current = chart;
 
     applyStyles(chart, theme, chartBg, gridColor);
+    setChartReady(true);
 
     // ── DataLoader ────────────────────────────────────────────────────────────
     chart.setDataLoader({
@@ -339,6 +354,8 @@ export function KlineChartWidget({
       wsRef.current = null;
       dispose(chart);
       chartRef.current = null;
+      rsiPaneIdRef.current = null;
+      setChartReady(false);
       plIds.current.clear();
       orderIds.current.clear();
       orderDataMap.current.clear();
@@ -354,6 +371,48 @@ export function KlineChartWidget({
     try { localStorage.setItem(INTERVAL_STORAGE_KEY, interval); } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interval]);
+
+  // ── Indicator sync ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !chartReady) return;
+
+    // EMA — klinecharts supports multiple calcParams in one indicator
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { (chart as any).removeIndicator("candle_pane", "EMA"); } catch {}
+
+    const emaParams: number[] = [];
+    const emaColors: Array<{ color: string }> = [];
+    if (indicators.ema20) { emaParams.push(20); emaColors.push({ color: "#F59E0B" }); }
+    if (indicators.ema50) { emaParams.push(50); emaColors.push({ color: "#8B5CF6" }); }
+
+    if (emaParams.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (chart as any).createIndicator(
+        { name: "EMA", calcParams: emaParams, styles: { lines: emaColors } },
+        true,
+        { id: "candle_pane" }
+      );
+    }
+
+    // RSI — separate pane
+    if (indicators.rsi) {
+      if (!rsiPaneIdRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paneId = (chart as any).createIndicator(
+          { name: "RSI", calcParams: [14], styles: { lines: [{ color: "#3B82F6" }] } },
+          false,
+          { height: 80 }
+        );
+        rsiPaneIdRef.current = paneId ?? null;
+      }
+    } else if (rsiPaneIdRef.current) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      try { (chart as any).removeIndicator(rsiPaneIdRef.current, "RSI"); } catch {}
+      rsiPaneIdRef.current = null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicators.ema20, indicators.ema50, indicators.rsi, chartReady]);
 
   // ── Theme / colors ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -462,6 +521,38 @@ export function KlineChartWidget({
         >
           <RefreshCw size={12} />
         </button>
+
+        {/* Separator */}
+        <div className="w-px h-[16px] mx-[2px]" style={{ background: "var(--border)" }} />
+
+        {/* Indicator toggles */}
+        <div
+          className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
+          style={{ background: "var(--secondary)" }}
+        >
+          {INDICATOR_DEFS.map(({ key, label, color }) => {
+            const active = indicators[key];
+            return (
+              <button
+                key={key}
+                onClick={() => setIndicators((prev) => ({ ...prev, [key]: !prev[key] }))}
+                className="flex items-center gap-[5px] px-[8px] py-[3px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+                style={{
+                  fontSize: "var(--text-label)",
+                  background: active ? "var(--card)" : "transparent",
+                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                  fontWeight: active ? "600" : "400",
+                }}
+              >
+                <span
+                  className="inline-block w-[10px] h-[2px] rounded-full shrink-0 transition-opacity"
+                  style={{ background: color, opacity: active ? 1 : 0.35 }}
+                />
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Live status — top right */}
