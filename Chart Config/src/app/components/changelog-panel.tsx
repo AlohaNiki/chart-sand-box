@@ -10,6 +10,61 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.12",
+    date: "Mar 17, 2026",
+    title: "KLineChart polish & sidebar UX",
+    items: [
+      "Tab order changed to Lightweight → KLineChart → SuperCharts",
+      "SuperCharts sidebar replaced with a 'Settings unavailable' placeholder",
+      "KLineChart: {ticker}/period title hidden, OHLCV tooltip moved below interval selector",
+      "KLineChart: order marker badge narrower (tighter padding), font weight Medium",
+      "KLineChart: order placement from sidebar now works (native click → convertFromPixel)",
+    ],
+  },
+  {
+    version: "0.11",
+    date: "Mar 17, 2026",
+    title: "KLineChart order markers parity",
+    items: [
+      "Custom buyMarker / sellMarker overlays: badge below low (↑ tail) and above high (↓ tail)",
+      "Anchored to candle high/low via candleMap built from historical data",
+      "Click on marker opens OrderDetailModal — same as Lightweight Charts",
+      "Cursor changes to pointer on marker hover",
+      "Sidebar + Buy / + Sell buttons work for KLineChart mode",
+    ],
+  },
+  {
+    version: "0.10",
+    date: "Mar 17, 2026",
+    title: "KLineChart price lines & colors",
+    items: [
+      "Custom labeledPriceLine overlay shows label + price value on right edge",
+      "Line color, label background and text color all match sidebar config",
+      "Order annotation markers use green/red instead of default blue",
+    ],
+  },
+  {
+    version: "0.9",
+    date: "Mar 17, 2026",
+    title: "KLineChart — third chart mode",
+    items: [
+      "KLineChart added as third option in the header toggle",
+      "Powered by klinecharts v10 with Binance REST + WebSocket data",
+      "All sidebar settings wired: background, grid, price lines, order markers",
+      "Same interval selector (1m–1d) and live WS status badge",
+    ],
+  },
+  {
+    version: "0.8",
+    date: "Mar 17, 2026",
+    title: "SuperCharts — TradingView embed",
+    items: [
+      "SuperCharts added as second chart mode via TradingView Advanced Chart iframe",
+      "Centered Lightweight | SuperCharts toggle in header (CSS grid 1fr auto 1fr)",
+      "Theme (dark/light) synced to the embed via URL param",
+    ],
+  },
+  {
     version: "0.7",
     date: "Mar 17, 2026",
     title: "Interactive order markers",
