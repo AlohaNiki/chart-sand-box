@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { init, dispose, type Chart, type KLineData } from "klinecharts";
+import { init, dispose, registerOverlay, type Chart, type KLineData } from "klinecharts";
 import { resolveColor } from "./price-line-editor";
 import type { PriceLineConfig, TradeOrder } from "./chart-widget";
 
@@ -8,6 +8,46 @@ import type { PriceLineConfig, TradeOrder } from "./chart-widget";
 
 function css(varName: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+// ── Custom overlay registration ───────────────────────────────────────────────
+// The built-in "priceLine" overlay ignores extendData and uses blue defaults.
+// We register "labeledPriceLine" once — draws a colored line + label badge on
+// the right edge, both styled via the overlay's own styles.line / styles.text.
+
+let _overlaysRegistered = false;
+
+function ensureOverlaysRegistered() {
+  if (_overlaysRegistered) return;
+  _overlaysRegistered = true;
+
+  registerOverlay({
+    name: "labeledPriceLine",
+    totalStep: 2,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ overlay, coordinates, bounding }) => {
+      const label = typeof overlay.extendData === "string" ? overlay.extendData : "";
+      const y = coordinates[0]?.y ?? 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const figs: any[] = [
+        {
+          type: "line",
+          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
+          ignoreEvent: true,
+        },
+      ];
+      if (label) {
+        figs.push({
+          type: "text",
+          attrs: { x: bounding.width - 6, y, text: label, align: "right", baseline: "middle" },
+          ignoreEvent: true,
+        });
+      }
+      return figs;
+    },
+  });
 }
 
 // ── Interval / Period mapping ─────────────────────────────────────────────────
@@ -38,8 +78,34 @@ function periodToBinanceInterval(period: Period): string {
 
 // ── Line style mapping ────────────────────────────────────────────────────────
 
-function lineStyle(n: number): "solid" | "dashed" {
+function lineStyleStr(n: number): "solid" | "dashed" {
   return n === 0 ? "solid" : "dashed";
+}
+
+// ── Build price-line overlay styles ──────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function plStyles(cfg: PriceLineConfig): any {
+  const lineColor  = resolveColor(cfg.color);
+  const labelBg    = resolveColor(cfg.labelColor);
+  const labelText  = resolveColor(cfg.labelTextColor);
+  return {
+    line: {
+      color: lineColor,
+      size: cfg.lineWidth,
+      style: lineStyleStr(cfg.lineStyle),
+    },
+    text: {
+      color: labelText,
+      backgroundColor: labelBg,
+      borderColor: labelBg,
+      borderRadius: 3,
+      paddingLeft: 5,
+      paddingRight: 5,
+      paddingTop: 2,
+      paddingBottom: 2,
+    },
+  };
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -82,6 +148,8 @@ export function KlineChartWidget({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    ensureOverlaysRegistered();
+
     const chart = init(containerRef.current);
     if (!chart) return;
     chartRef.current = chart;
@@ -107,7 +175,7 @@ export function KlineChartWidget({
               close: parseFloat(k[4] as string),
               volume: parseFloat(k[5] as string),
             }));
-            callback(bars, false); // false = no more historical pages for now
+            callback(bars, false);
           })
           .catch(() => callback([], true));
       },
@@ -190,22 +258,18 @@ export function KlineChartWidget({
     for (const cfg of priceLines) {
       if (!cfg.visible) continue;
       const overlayId = `pl-${cfg.id}`;
-      const styles = {
-        line: {
-          color: resolveColor(cfg.color),
-          size: cfg.lineWidth,
-          style: lineStyle(cfg.lineStyle),
-        },
-      };
+      const styles = plStyles(cfg);
+
       if (plIds.current.has(cfg.id)) {
         chart.overrideOverlay({
           id: overlayId,
           points: [{ value: cfg.price }],
+          extendData: cfg.label,
           styles,
         });
       } else {
         chart.createOverlay({
-          name: "priceLine",
+          name: "labeledPriceLine",
           id: overlayId,
           points: [{ value: cfg.price }],
           styles,
@@ -232,15 +296,30 @@ export function KlineChartWidget({
 
     for (const order of orders) {
       const id = `order-${order.id}`;
+      const isBuy = order.type === "buy";
+      const color = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
+      const label = isBuy ? "Buy" : "Sell";
+
       chart.createOverlay({
         name: "simpleAnnotation",
         id,
         points: [{ timestamp: order.time * 1000, value: order.price }],
-        extendData: order.type === "buy" ? "▲ B" : "▼ S",
+        extendData: label,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         styles: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          text: { color: order.type === "buy" ? css("--positive-bg-default") : css("--negative-bg-default") } as any,
-        },
+          line:    { color },
+          polygon: { color, borderColor: color },
+          text: {
+            color: "#FFFFFF",
+            backgroundColor: color,
+            borderColor: color,
+            borderRadius: 3,
+            paddingLeft: 4,
+            paddingRight: 4,
+            paddingTop: 2,
+            paddingBottom: 2,
+          },
+        } as any,
       });
       orderIds.current.add(id);
     }
