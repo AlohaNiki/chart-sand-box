@@ -789,7 +789,7 @@ export function ChartWidget({
     <div className="relative w-full h-full min-h-[400px]" style={{ fontFamily: "'Inter Display', sans-serif" }}>
       <div ref={chartContainerRef} className="w-full h-full" />
 
-      {/* Interval selector + reset — top left */}
+      {/* Interval selector + reset + indicators — top left */}
       <div className="absolute top-[8px] left-[8px] flex items-center gap-[4px] z-10">
         <div
           className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
@@ -819,10 +819,11 @@ export function ChartWidget({
         >
           <RefreshCw size={12} />
         </button>
-      </div>
 
-      {/* Indicator toggles — bottom center */}
-      <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 z-10">
+        {/* Separator */}
+        <div className="w-px h-[16px] mx-[2px]" style={{ background: "var(--border)" }} />
+
+        {/* Indicator toggles */}
         <div
           className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
           style={{ background: "var(--secondary)" }}
