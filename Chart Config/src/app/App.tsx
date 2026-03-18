@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
+import { ChartWidget, type PriceLineConfig, type TradeOrder, type IndicatorState } from "./components/chart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
 import { ChangelogPanel } from "./components/changelog-panel";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
@@ -242,6 +242,7 @@ export default function App() {
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -498,6 +499,7 @@ export default function App() {
                 onOrderPlace={handleOrderPlace}
                 onCancelPending={() => setPendingOrderType(null)}
                 onOrderClick={setSelectedOrder}
+                indicators={indicators}
               />
             </div>
           </div>
@@ -588,6 +590,40 @@ export default function App() {
                       )}
                     </div>
                   )}
+                </div>
+
+                <div className="h-px" style={{ background: "var(--border)" }} />
+
+                {/* Indicators */}
+                <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
+                  Indicators
+                </h4>
+                <div className="flex flex-col gap-[6px]">
+                  {(
+                    [
+                      { key: "ema20", label: "EMA 20", color: "#F59E0B" },
+                      { key: "ema50", label: "EMA 50", color: "#8B5CF6" },
+                      { key: "rsi",   label: "RSI 14",  color: "#3B82F6" },
+                    ] as { key: keyof IndicatorState; label: string; color: string }[]
+                  ).map(({ key, label, color }) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-[8px] cursor-pointer"
+                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={indicators[key]}
+                        onChange={(e) => setIndicators((prev) => ({ ...prev, [key]: e.target.checked }))}
+                        className="cursor-pointer"
+                      />
+                      <span
+                        className="inline-block w-[10px] h-[2px] rounded-full shrink-0"
+                        style={{ background: color }}
+                      />
+                      {label}
+                    </label>
+                  ))}
                 </div>
 
                 <div className="h-px" style={{ background: "var(--border)" }} />

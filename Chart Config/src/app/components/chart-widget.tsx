@@ -6,15 +6,18 @@ import {
   createChart,
   ColorType,
   CandlestickSeries,
+  LineSeries,
   type IChartApi,
   type ISeriesApi,
   type CandlestickData,
+  type LineData,
   type Time,
   type IPriceLine,
   type CreatePriceLineOptions,
   type PriceLineOptions,
   type MouseEventParams,
 } from "lightweight-charts";
+import { EMA, RSI } from "technicalindicators";
 
 // ── Custom Order Markers Primitive ────────────────────────────────────────────
 
@@ -53,16 +56,16 @@ class OrderMarkersRenderer {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      // Badge dimensions: padding 5px left/right, 2px top/bottom
-      const PAD_H = 5 * hpr;  // horizontal padding
-      const PAD_V = 3 * vpr;  // vertical padding
-      const charW = ctx.measureText("B").width; // measure at current font
+      // Badge dimensions: padding 5px left/right, 3px top/bottom
+      const PAD_H = 5 * hpr;
+      const PAD_V = 3 * vpr;
+      const charW = ctx.measureText("B").width;
       const W = charW + PAD_H * 2;
       const H = FONT_SIZE + PAD_V * 2;
 
       const TAIL = 5 * vpr, R = 3 * hpr;
-      const GAP = 4 * vpr;          // gap between wick tip and tail tip
-      const HALF_TW = 3 * hpr;      // half-width of triangle base
+      const GAP = 4 * vpr;
+      const HALF_TW = 3 * hpr;
 
       for (const order of this.orders) {
         const cx = chart.timeScale().timeToCoordinate(order.time as Time);
@@ -70,7 +73,6 @@ class OrderMarkersRenderer {
 
         const isBuy = order.type === "buy";
 
-        // Resolve reference price: candle low for buy, candle high for sell
         const candle = this.candleMap.get(order.time);
         const refPrice = isBuy
           ? (candle?.low  ?? order.price)
@@ -80,12 +82,12 @@ class OrderMarkersRenderer {
         if (cy === null) continue;
 
         const x  = cx * hpr;
-        const ry = cy * vpr; // reference Y (wick tip in bitmap px)
+        const ry = cy * vpr;
 
         const bgColor  = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
         const txtColor = isBuy ? css("--positive-over")       : css("--negative-over");
 
-        // Store hit box in CSS px for click detection (expanded to min 32×32 for easy tapping)
+        // Expanded hit box (min 32×32)
         const boxW = W / hpr, boxH = H / vpr, tailPx = TAIL / vpr, gapPx = GAP / vpr;
         const HIT_MIN = 32;
         const rawHitW = boxW, rawHitH = tailPx + boxH;
@@ -103,41 +105,29 @@ class OrderMarkersRenderer {
         ctx.fillStyle = bgColor;
 
         if (isBuy) {
-          // Marker BELOW candle low wick, tail points UP toward the wick
-          // Layout (Y increases downward):
-          //   wick low → GAP → tail tip → TAIL → tail base / box top → H → box bottom
-          const tipY  = ry + GAP;           // tail tip
-          const baseY = tipY + TAIL;         // tail base = box top
-
+          const tipY  = ry + GAP;
+          const baseY = tipY + TAIL;
           drawRoundedRect(ctx, x - W / 2, baseY, W, H, R);
           ctx.fill();
-          // Triangle pointing up
           ctx.beginPath();
           ctx.moveTo(x - HALF_TW, baseY);
           ctx.lineTo(x + HALF_TW, baseY);
           ctx.lineTo(x, tipY);
           ctx.closePath();
           ctx.fill();
-          // Label
           ctx.fillStyle = txtColor;
           ctx.fillText("B", x, baseY + H / 2);
         } else {
-          // Marker ABOVE candle high wick, tail points DOWN toward the wick
-          // Layout (Y increases downward):
-          //   box top → H → box bottom / tail base → TAIL → tail tip → GAP → wick high
-          const tipY  = ry - GAP;           // tail tip
-          const baseY = tipY - TAIL;         // tail base = box bottom
-
+          const tipY  = ry - GAP;
+          const baseY = tipY - TAIL;
           drawRoundedRect(ctx, x - W / 2, baseY - H, W, H, R);
           ctx.fill();
-          // Triangle pointing down
           ctx.beginPath();
           ctx.moveTo(x - HALF_TW, baseY);
           ctx.lineTo(x + HALF_TW, baseY);
           ctx.lineTo(x, tipY);
           ctx.closePath();
           ctx.fill();
-          // Label
           ctx.fillStyle = txtColor;
           ctx.fillText("S", x, baseY - H / 2);
         }
@@ -190,6 +180,22 @@ class OrderMarkersPrimitive {
   getOrders()   { return this._orders; }
 }
 
+// ── Indicator helpers ─────────────────────────────────────────────────────────
+
+function calcEMA(candles: CandlestickData<Time>[], period: number): LineData<Time>[] {
+  if (candles.length < period) return [];
+  const values = EMA.calculate({ period, values: candles.map((c) => c.close) });
+  const offset = candles.length - values.length;
+  return values.map((value, i) => ({ time: candles[offset + i].time, value: Math.round(value * 100) / 100 }));
+}
+
+function calcRSI(candles: CandlestickData<Time>[], period: number): LineData<Time>[] {
+  if (candles.length < period + 1) return [];
+  const values = RSI.calculate({ period, values: candles.map((c) => c.close) });
+  const offset = candles.length - values.length;
+  return values.map((value, i) => ({ time: candles[offset + i].time, value: Math.round(value * 100) / 100 }));
+}
+
 // ── Binance data ──────────────────────────────────────────────────────────────
 
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
@@ -197,14 +203,13 @@ type Interval = (typeof INTERVALS)[number];
 
 const INTERVAL_STORAGE_KEY = "chartConfig_interval";
 
-/** Default number of candles visible on load (rest available via scroll) */
 const INTERVAL_DEFAULT_VISIBLE: Record<Interval, number> = {
-  "1d":  100,  // ~3 months
-  "4h":  90,   // ~15 days
-  "1h":  120,  // ~5 days
-  "15m": 128,  // ~32 hours
-  "5m":  144,  // ~12 hours
-  "1m":  120,  // ~2 hours
+  "1d":  100,
+  "4h":  90,
+  "1h":  120,
+  "15m": 128,
+  "5m":  144,
+  "1m":  120,
 };
 
 async function fetchKlines(
@@ -230,10 +235,9 @@ async function fetchKlines(
 
 export interface TradeOrder {
   id: string;
-  time: number; // UTCTimestamp (seconds)
+  time: number;
   price: number;
   type: "buy" | "sell";
-  // Optional detail fields (shown in popup)
   closePrice?: number;
   leverage?: number;
   amount?: number;
@@ -253,18 +257,21 @@ export interface PriceLineConfig {
   label: string;
   price: number;
   color: string;
-  /** Background color of the axis price label badge */
   labelColor: string;
-  /** Text color of the font on the axis price label badge */
   labelTextColor: string;
   lineWidth: number;
-  lineStyle: number; // 0=solid, 1=dotted, 2=dashed, 3=large dashed, 4=sparse dotted
+  lineStyle: number;
   visible: boolean;
+}
+
+export interface IndicatorState {
+  ema20: boolean;
+  ema50: boolean;
+  rsi: boolean;
 }
 
 interface ChartWidgetProps {
   priceLines: PriceLineConfig[];
-  /** Called when user drags a price line on the chart */
   onPriceLineDrag?: (id: string, newPrice: number) => void;
   theme?: "dark" | "light";
   chartBg?: string;
@@ -275,26 +282,28 @@ interface ChartWidgetProps {
   onOrderPlace?: (order: TradeOrder) => void;
   onCancelPending?: () => void;
   onOrderClick?: (order: TradeOrder) => void;
+  indicators?: IndicatorState;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
 
-/** Snap distance in pixels for detecting price line hover/drag */
 const SNAP_PX = 10;
 
-/** Read a resolved CSS variable value from :root */
 function css(varName: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-/** Build rgba() string using an RGB CSS variable + custom alpha */
 function rgba(rgbVar: string, alpha: number): string {
   return `rgba(${css(rgbVar)}, ${alpha})`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridColor, orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick }: ChartWidgetProps) {
+export function ChartWidget({
+  priceLines, onPriceLineDrag, theme, chartBg, gridColor,
+  orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick,
+  indicators,
+}: ChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -304,7 +313,15 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   const markersPluginRef = useRef<any>(null);
   const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
 
-  // Keep mutable refs for callbacks so event listeners always see latest values
+  // Candle data stored for indicator recalculation
+  const candleDataRef = useRef<CandlestickData<Time>[]>([]);
+
+  // Indicator series refs
+  const ema20Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  const ema50Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiRef   = useRef<ISeriesApi<"Line"> | null>(null);
+
+  // Callback refs
   const priceLinesConfigRef = useRef<PriceLineConfig[]>(priceLines);
   const onPriceLineDragRef = useRef(onPriceLineDrag);
   const onOrderPlaceRef = useRef(onOrderPlace);
@@ -313,13 +330,10 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   const pendingOrderTypeRef = useRef(pendingOrderType ?? null);
   const draggingIdRef = useRef<string | null>(null);
 
-  // Interval state (persisted in localStorage)
   const [interval, setInterval] = useState<Interval>(() => {
     try {
       const stored = localStorage.getItem(INTERVAL_STORAGE_KEY);
-      if (stored && (INTERVALS as readonly string[]).includes(stored)) {
-        return stored as Interval;
-      }
+      if (stored && (INTERVALS as readonly string[]).includes(stored)) return stored as Interval;
     } catch {}
     return "1d";
   });
@@ -335,12 +349,11 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
   useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
   useEffect(() => { pendingOrderTypeRef.current = pendingOrderType ?? null; }, [pendingOrderType]);
 
-  // ── Save interval to localStorage ─────────────────────────────────────────
   useEffect(() => {
     try { localStorage.setItem(INTERVAL_STORAGE_KEY, interval); } catch {}
   }, [interval]);
 
-  // ── Initialize chart + drag handling (runs once) ──────────────────────────
+  // ── Initialize chart ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!chartContainerRef.current) return;
     const container = chartContainerRef.current;
@@ -357,24 +370,11 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         horzLines: { color: resolveColor(gridColor ?? "--border") },
       },
       crosshair: {
-        vertLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),
-          labelBackgroundColor: css("--accent-bg-default"),
-        },
-        horzLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),
-          labelBackgroundColor: css("--accent-bg-default"),
-        },
+        vertLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
+        horzLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
       },
-      rightPriceScale: {
-        borderColor: css("--border"),
-        scaleMargins: { top: 0.1, bottom: 0.1 },
-      },
-      timeScale: {
-        borderColor: css("--border"),
-        timeVisible: false,
-        rightOffset: 10,
-      },
+      rightPriceScale: { borderColor: css("--border"), scaleMargins: { top: 0.1, bottom: 0.1 } },
+      timeScale: { borderColor: css("--border"), timeVisible: false, rightOffset: 10 },
       width: container.clientWidth,
       height: container.clientHeight,
     });
@@ -395,21 +395,17 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     markersPluginRef.current = orderPrimitive;
     setChartReady(true);
 
-    // --- Drag-on-chart logic ---
+    // Drag handling
     const findNearestLine = (clientY: number): string | null => {
       const rect = container.getBoundingClientRect();
       const y = clientY - rect.top;
-      let closestId: string | null = null;
-      let closestDist = Infinity;
+      let closestId: string | null = null, closestDist = Infinity;
       for (const config of priceLinesConfigRef.current) {
         if (!config.visible) continue;
         const coord = series.priceToCoordinate(config.price);
         if (coord === null) continue;
         const dist = Math.abs(coord - y);
-        if (dist < closestDist && dist < SNAP_PX) {
-          closestDist = dist;
-          closestId = config.id;
-        }
+        if (dist < closestDist && dist < SNAP_PX) { closestDist = dist; closestId = config.id; }
       }
       return closestId;
     };
@@ -418,8 +414,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       if (e.button !== 0) return;
       const nearId = findNearestLine(e.clientY);
       if (!nearId) return;
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       draggingIdRef.current = nearId;
       container.setPointerCapture(e.pointerId);
       chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -429,22 +424,15 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     const onPointerMove = (e: PointerEvent) => {
       if (draggingIdRef.current) {
         const rect = container.getBoundingClientRect();
-        const y = e.clientY - rect.top;
-        const price = series.coordinateToPrice(y);
+        const price = series.coordinateToPrice(e.clientY - rect.top);
         if (price !== null && onPriceLineDragRef.current) {
-          onPriceLineDragRef.current(
-            draggingIdRef.current,
-            Math.round(Number(price) * 100) / 100
-          );
+          onPriceLineDragRef.current(draggingIdRef.current, Math.round(Number(price) * 100) / 100);
         }
       } else {
         const rect = container.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
         const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
-        const onMarker = plugin?.getHitBoxes().some(
-          (hb) => mx >= hb.x && mx <= hb.x + hb.w && my >= hb.y && my <= hb.y + hb.h
-        ) ?? false;
+        const onMarker = plugin?.getHitBoxes().some((hb) => mx >= hb.x && mx <= hb.x + hb.w && my >= hb.y && my <= hb.y + hb.h) ?? false;
         const nearId = findNearestLine(e.clientY);
         container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : onMarker ? "pointer" : nearId ? "ns-resize" : "";
       }
@@ -482,12 +470,94 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       chartRef.current = null;
       seriesRef.current = null;
       markersPluginRef.current = null;
+      ema20Ref.current = null;
+      ema50Ref.current = null;
+      rsiRef.current = null;
       priceLinesRef.current.clear();
       setChartReady(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Fetch historical data + open WebSocket (re-runs on interval change) ───
+  // ── Sync indicators helper (called after data load + on indicator toggle) ─
+  const syncIndicators = (candles: CandlestickData<Time>[], ind: IndicatorState | undefined) => {
+    const chart = chartRef.current;
+    if (!chart || candles.length === 0) return;
+
+    // ── EMA 20 ────────────────────────────────────────────────────────────
+    if (ind?.ema20) {
+      if (!ema20Ref.current) {
+        ema20Ref.current = chart.addSeries(LineSeries, {
+          color: "#F59E0B",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: false,
+          title: "EMA 20",
+        }, 0);
+      }
+      ema20Ref.current.setData(calcEMA(candles, 20));
+    } else if (ema20Ref.current) {
+      chart.removeSeries(ema20Ref.current);
+      ema20Ref.current = null;
+    }
+
+    // ── EMA 50 ────────────────────────────────────────────────────────────
+    if (ind?.ema50) {
+      if (!ema50Ref.current) {
+        ema50Ref.current = chart.addSeries(LineSeries, {
+          color: "#8B5CF6",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: false,
+          title: "EMA 50",
+        }, 0);
+      }
+      ema50Ref.current.setData(calcEMA(candles, 50));
+    } else if (ema50Ref.current) {
+      chart.removeSeries(ema50Ref.current);
+      ema50Ref.current = null;
+    }
+
+    // ── RSI ───────────────────────────────────────────────────────────────
+    if (ind?.rsi) {
+      if (!rsiRef.current) {
+        rsiRef.current = chart.addSeries(LineSeries, {
+          color: "#3B82F6",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: true,
+          title: "RSI 14",
+          priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+          autoscaleInfoProvider: () => ({
+            priceRange: { minValue: 0, maxValue: 100 },
+          }),
+        }, 1);
+
+        // Level lines at 70 and 30
+        rsiRef.current.createPriceLine({ price: 70, color: "rgba(239,68,68,0.4)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" });
+        rsiRef.current.createPriceLine({ price: 30, color: "rgba(34,197,94,0.4)",  lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
+
+        // Make RSI pane shorter (1/4 of total height)
+        const panes = chart.panes();
+        if (panes.length >= 2) {
+          panes[0].setStretchFactor(3);
+          panes[1].setStretchFactor(1);
+        }
+      }
+      rsiRef.current.setData(calcRSI(candles, 14));
+    } else if (rsiRef.current) {
+      chart.removeSeries(rsiRef.current);
+      rsiRef.current = null;
+      // Restore single pane
+      const panes = chart.panes();
+      if (panes.length >= 1) panes[0].setStretchFactor(1);
+    }
+  };
+
+  // ── Fetch historical data + WebSocket ─────────────────────────────────────
   useEffect(() => {
     if (!chartReady || !seriesRef.current || !chartRef.current) return;
 
@@ -496,15 +566,12 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
     setIsLoading(true);
     setWsStatus("connecting");
-
-    // Close previous WebSocket
     wsRef.current?.close();
     wsRef.current = null;
 
     const controller = new AbortController();
     let cancelled = false;
 
-    // Update time/seconds visibility for this interval
     chart.applyOptions({
       timeScale: {
         timeVisible: interval !== "1d",
@@ -518,29 +585,28 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         if (cancelled) return;
 
         series.setData(candles);
+        candleDataRef.current = candles;
+
         const visible = INTERVAL_DEFAULT_VISIBLE[interval];
         chart.timeScale().setVisibleLogicalRange({
           from: candles.length - visible,
-          to:   candles.length - 1 + 10, // +10 matches rightOffset
+          to:   candles.length - 1 + 10,
         });
         setIsLoading(false);
 
-        // Build candle map for order marker positioning
+        // Build candle map
         const map = new Map<number, { high: number; low: number }>();
         for (const c of candles) map.set(c.time as number, { high: c.high, low: c.low });
         candleMapRef.current = map;
         (markersPluginRef.current as OrderMarkersPrimitive | null)?.setCandleMap(map);
 
-        // Live WebSocket
-        const ws = new WebSocket(
-          `wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`
-        );
+        // Sync indicators with fresh data
+        syncIndicators(candles, indicators);
+
+        // WebSocket
+        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
         wsRef.current = ws;
-
-        ws.onopen = () => {
-          if (!cancelled) setWsStatus("live");
-        };
-
+        ws.onopen  = () => { if (!cancelled) setWsStatus("live"); };
         ws.onmessage = (event) => {
           if (cancelled) return;
           try {
@@ -549,29 +615,31 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
             const t = Math.floor((k.t as number) / 1000);
             const hi = parseFloat(k.h as string);
             const lo = parseFloat(k.l as string);
-            seriesRef.current?.update({
+            const updated: CandlestickData<Time> = {
               time: t as Time,
               open: parseFloat(k.o as string),
-              high: hi,
-              low: lo,
+              high: hi, low: lo,
               close: parseFloat(k.c as string),
-            });
+            };
+            seriesRef.current?.update(updated);
             candleMapRef.current.set(t, { high: hi, low: lo });
+
+            // Update last candle in stored data and refresh indicator last point
+            const data = candleDataRef.current;
+            if (data.length > 0) {
+              const last = data[data.length - 1];
+              if ((last.time as number) === t) {
+                data[data.length - 1] = { ...last, high: hi, low: lo, close: updated.close };
+              } else {
+                data.push(updated);
+              }
+            }
           } catch {}
         };
-
-        ws.onerror = () => {
-          if (!cancelled) setWsStatus("offline");
-        };
-
-        ws.onclose = () => {
-          if (!cancelled) setWsStatus("offline");
-        };
+        ws.onerror = () => { if (!cancelled) setWsStatus("offline"); };
+        ws.onclose = () => { if (!cancelled) setWsStatus("offline"); };
       } catch {
-        if (!cancelled) {
-          setIsLoading(false);
-          setWsStatus("offline");
-        }
+        if (!cancelled) { setIsLoading(false); setWsStatus("offline"); }
       }
     })();
 
@@ -581,39 +649,36 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       wsRef.current?.close();
       wsRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interval, chartReady]);
 
-  // ── Update chart colors when theme / bg / grid changes ───────────────────
+  // ── Sync indicators on toggle ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!chartReady) return;
+    syncIndicators(candleDataRef.current, indicators);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicators?.ema20, indicators?.ema50, indicators?.rsi, chartReady]);
+
+  // ── Update chart colors on theme change ──────────────────────────────────
   useEffect(() => {
     const chart = chartRef.current;
     const series = seriesRef.current;
     if (!chart || !series) return;
 
     const resolvedGrid = resolveColor(gridColor ?? "--border");
-
     chart.applyOptions({
       layout: {
         textColor: css("--contrast-secondary"),
         background: { type: ColorType.Solid, color: resolveColor(chartBg ?? "--surface-canvas") },
       },
-      grid: {
-        vertLines: { color: resolvedGrid },
-        horzLines: { color: resolvedGrid },
-      },
+      grid: { vertLines: { color: resolvedGrid }, horzLines: { color: resolvedGrid } },
       crosshair: {
-        vertLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),
-          labelBackgroundColor: css("--accent-bg-default"),
-        },
-        horzLine: {
-          color: rgba("--accent-bg-default-rgb", 0.4),
-          labelBackgroundColor: css("--accent-bg-default"),
-        },
+        vertLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
+        horzLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
       },
       rightPriceScale: { borderColor: css("--border") },
       timeScale: { borderColor: css("--border") },
     });
-
     series.applyOptions({
       upColor: css("--positive-bg-default"),
       downColor: css("--negative-bg-default"),
@@ -624,7 +689,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     });
   }, [theme, chartBg, gridColor]);
 
-  // ── Sync price lines with chart ───────────────────────────────────────────
+  // ── Sync price lines ──────────────────────────────────────────────────────
   useEffect(() => {
     const series = seriesRef.current;
     if (!series) return;
@@ -633,22 +698,15 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     const currentIds = new Set(priceLines.map((pl) => pl.id));
 
     for (const [id, line] of existingLines) {
-      if (!currentIds.has(id)) {
-        series.removePriceLine(line);
-        existingLines.delete(id);
-      }
+      if (!currentIds.has(id)) { series.removePriceLine(line); existingLines.delete(id); }
     }
 
     for (const config of priceLines) {
       if (!config.visible) {
         const existing = existingLines.get(config.id);
-        if (existing) {
-          series.removePriceLine(existing);
-          existingLines.delete(config.id);
-        }
+        if (existing) { series.removePriceLine(existing); existingLines.delete(config.id); }
         continue;
       }
-
       const options: CreatePriceLineOptions = {
         price: config.price,
         color: resolveColor(config.color),
@@ -659,25 +717,20 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         axisLabelColor: resolveColor(config.labelColor),
         axisLabelTextColor: resolveColor(config.labelTextColor),
       };
-
       const existing = existingLines.get(config.id);
-      if (existing) {
-        existing.applyOptions(options);
-      } else {
-        const line = series.createPriceLine(options);
-        existingLines.set(config.id, line);
-      }
+      if (existing) { existing.applyOptions(options); }
+      else { existingLines.set(config.id, series.createPriceLine(options)); }
     }
   }, [priceLines, theme]);
 
-  // ── Sync trade order markers ──────────────────────────────────────────────
+  // ── Sync order markers ────────────────────────────────────────────────────
   useEffect(() => {
     const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
     if (!plugin || !chartReady) return;
     plugin.setOrders(orders ?? [], showOrders ?? true);
   }, [orders, showOrders, theme, chartReady]);
 
-  // ── Click-to-place order ───────────────────────────────────────────────────
+  // ── Click-to-place order ──────────────────────────────────────────────────
   useEffect(() => {
     const chart = chartRef.current;
     const series = seriesRef.current;
@@ -695,10 +748,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         type: pendingOrderTypeRef.current!,
       });
     };
-
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancelPendingRef.current?.();
-    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onCancelPendingRef.current?.(); };
 
     chart.subscribeClick(handler);
     window.addEventListener("keydown", onEsc);
@@ -708,7 +758,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
     };
   }, [pendingOrderType, chartReady]);
 
-  // ── Click on order marker → show detail popup ─────────────────────────────
+  // ── Click on order marker ─────────────────────────────────────────────────
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !chartReady) return;
@@ -718,9 +768,7 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
       const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
       if (!plugin) return;
       const { x, y } = param.point;
-      const hit = plugin.getHitBoxes().find(
-        (hb) => x >= hb.x && x <= hb.x + hb.w && y >= hb.y && y <= hb.y + hb.h
-      );
+      const hit = plugin.getHitBoxes().find((hb) => x >= hb.x && x <= hb.x + hb.w && y >= hb.y && y <= hb.y + hb.h);
       if (hit) {
         const order = plugin.getOrders().find((o) => o.id === hit.orderId);
         if (order) onOrderClickRef.current?.(order);
@@ -733,14 +781,10 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="relative w-full h-full min-h-[400px]"
-      style={{ fontFamily: "'Inter Display', sans-serif" }}
-    >
-      {/* Chart canvas */}
+    <div className="relative w-full h-full min-h-[400px]" style={{ fontFamily: "'Inter Display', sans-serif" }}>
       <div ref={chartContainerRef} className="w-full h-full" />
 
-      {/* Interval selector + reset view — top left */}
+      {/* Interval selector + reset */}
       <div className="absolute top-[8px] left-[8px] flex items-center gap-[4px] z-10">
         <div
           className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
@@ -762,8 +806,6 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
             </button>
           ))}
         </div>
-
-        {/* Reset view button */}
         <button
           onClick={() => chartRef.current?.timeScale().fitContent()}
           className="flex items-center justify-center w-[26px] h-[26px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
@@ -774,35 +816,25 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
         </button>
       </div>
 
-      {/* Live status indicator — top right */}
+      {/* Live status */}
       <div
         className="absolute top-[8px] right-[8px] flex items-center gap-[5px] z-10 px-[8px] py-[3px] rounded-[var(--radius-sm)]"
         style={{
           fontSize: "var(--text-label)",
           background: "var(--secondary)",
-          color:
-            wsStatus === "live"
-              ? "var(--positive-bg-default)"
-              : wsStatus === "connecting"
-              ? "var(--muted-foreground)"
-              : "var(--negative-bg-default)",
+          color: wsStatus === "live" ? "var(--positive-bg-default)" : wsStatus === "connecting" ? "var(--muted-foreground)" : "var(--negative-bg-default)",
         }}
       >
         <span
           className={`inline-block w-[6px] h-[6px] rounded-full shrink-0 ${wsStatus === "live" ? "animate-pulse" : ""}`}
           style={{
-            background:
-              wsStatus === "live"
-                ? "var(--positive-bg-default)"
-                : wsStatus === "connecting"
-                ? "var(--muted-foreground)"
-                : "var(--negative-bg-default)",
+            background: wsStatus === "live" ? "var(--positive-bg-default)" : wsStatus === "connecting" ? "var(--muted-foreground)" : "var(--negative-bg-default)",
           }}
         />
         {wsStatus === "live" ? "LIVE" : wsStatus === "connecting" ? "..." : "OFFLINE"}
       </div>
 
-      {/* Pending order placement banner */}
+      {/* Pending order banner */}
       {pendingOrderType && (
         <div
           className="absolute top-[44px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-[8px] px-[12px] py-[6px] rounded-[var(--radius)] pointer-events-none"
@@ -822,18 +854,8 @@ export function ChartWidget({ priceLines, onPriceLineDrag, theme, chartBg, gridC
 
       {/* Loading overlay */}
       {isLoading && (
-        <div
-          className="absolute inset-0 flex items-center justify-center z-20"
-          style={{ background: "rgba(0,0,0,0.12)" }}
-        >
-          <span
-            style={{
-              color: "var(--muted-foreground)",
-              fontSize: "var(--text-label)",
-            }}
-          >
-            Loading…
-          </span>
+        <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: "rgba(0,0,0,0.12)" }}>
+          <span style={{ color: "var(--muted-foreground)", fontSize: "var(--text-label)" }}>Loading…</span>
         </div>
       )}
     </div>
