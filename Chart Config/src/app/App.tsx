@@ -4,6 +4,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
 import { SuperChartsWidget } from "./components/supercharts-widget";
+import { KlineChartWidget } from "./components/klinechart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
 import { ChangelogPanel } from "./components/changelog-panel";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
@@ -243,7 +244,7 @@ export default function App() {
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [chartMode, setChartMode] = useState<"lightweight" | "supercharts">("lightweight");
+  const [chartMode, setChartMode] = useState<"lightweight" | "supercharts" | "klinechart">("lightweight");
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -446,7 +447,7 @@ export default function App() {
             className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
             style={{ background: "var(--secondary)" }}
           >
-            {(["lightweight", "supercharts"] as const).map((mode) => (
+            {(["lightweight", "supercharts", "klinechart"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setChartMode(mode)}
@@ -459,7 +460,7 @@ export default function App() {
                   fontWeight: chartMode === mode ? "600" : "400",
                 }}
               >
-                {mode === "lightweight" ? "Lightweight" : "SuperCharts"}
+                {mode === "lightweight" ? "Lightweight" : mode === "supercharts" ? "SuperCharts" : "KLineChart"}
               </button>
             ))}
           </div>
@@ -523,8 +524,17 @@ export default function App() {
                   onCancelPending={() => setPendingOrderType(null)}
                   onOrderClick={setSelectedOrder}
                 />
-              ) : (
+              ) : chartMode === "supercharts" ? (
                 <SuperChartsWidget theme={theme} />
+              ) : (
+                <KlineChartWidget
+                  priceLines={priceLines}
+                  theme={theme}
+                  chartBg={chartBg}
+                  gridColor={gridColor}
+                  orders={orders}
+                  showOrders={showOrders}
+                />
               )}
             </div>
           </div>
