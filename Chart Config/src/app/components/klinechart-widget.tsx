@@ -11,10 +11,6 @@ function css(varName: string): string {
 }
 
 // ── Custom overlay registration ───────────────────────────────────────────────
-// Called once at module level. Registers:
-//   • labeledPriceLine  — horizontal line + label badge on right edge
-//   • buyMarker         — badge below candle low, tail pointing UP
-//   • sellMarker        — badge above candle high, tail pointing DOWN
 
 let _overlaysRegistered = false;
 
@@ -32,30 +28,18 @@ function ensureOverlaysRegistered() {
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const label = typeof overlay.extendData === "string" ? overlay.extendData : "";
       const value = (overlay.points as Array<{ value?: number }>)[0]?.value ?? 0;
-      const priceStr = value.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+      const priceStr = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const displayText = label ? `${label}  ${priceStr}` : priceStr;
       const y = coordinates[0]?.y ?? 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return [
-        {
-          type: "line",
-          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
-          ignoreEvent: true,
-        },
-        {
-          type: "text",
-          attrs: { x: bounding.width - 6, y, text: displayText, align: "right", baseline: "middle" },
-          ignoreEvent: true,
-        },
+        { type: "line", attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] }, ignoreEvent: true },
+        { type: "text", attrs: { x: bounding.width - 6, y, text: displayText, align: "right", baseline: "middle" }, ignoreEvent: true },
       ] as any[];
     },
   });
 
-  // ── Buy marker ──────────────────────────────────────────────────────────────
-  // Point anchored at candle low; badge rendered BELOW the anchor; tail points UP
+  // ── Buy marker — badge below candle low, tail points UP ────────────────────
   registerOverlay({
     name: "buyMarker",
     totalStep: 2,
@@ -65,7 +49,7 @@ function ensureOverlaysRegistered() {
     createPointFigures: ({ coordinates }) => {
       const x = coordinates[0]?.x ?? 0;
       const y = coordinates[0]?.y ?? 0;
-      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 26, R = 3;
+      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 20, R = 3;
       const tipY  = y + GAP;
       const baseY = tipY + TAIL;
       const bg = css("--positive-bg-default");
@@ -87,7 +71,7 @@ function ensureOverlaysRegistered() {
           type: "text",
           attrs: { x, y: baseY + H / 2, text: "B", align: "center", baseline: "middle" },
           styles: {
-            color: "#FFFFFF", size: 10, weight: 600,
+            color: "#FFFFFF", size: 10, weight: 500,
             backgroundColor: "transparent", borderColor: "transparent",
             borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
           },
@@ -97,8 +81,7 @@ function ensureOverlaysRegistered() {
     },
   });
 
-  // ── Sell marker ─────────────────────────────────────────────────────────────
-  // Point anchored at candle high; badge rendered ABOVE the anchor; tail points DOWN
+  // ── Sell marker — badge above candle high, tail points DOWN ────────────────
   registerOverlay({
     name: "sellMarker",
     totalStep: 2,
@@ -108,7 +91,7 @@ function ensureOverlaysRegistered() {
     createPointFigures: ({ coordinates }) => {
       const x = coordinates[0]?.x ?? 0;
       const y = coordinates[0]?.y ?? 0;
-      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 26, R = 3;
+      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 20, R = 3;
       const tipY  = y - GAP;
       const baseY = tipY - TAIL;
       const bg = css("--negative-bg-default");
@@ -130,7 +113,7 @@ function ensureOverlaysRegistered() {
           type: "text",
           attrs: { x, y: baseY - H / 2, text: "S", align: "center", baseline: "middle" },
           styles: {
-            color: "#FFFFFF", size: 10, weight: 600,
+            color: "#FFFFFF", size: 10, weight: 500,
             backgroundColor: "transparent", borderColor: "transparent",
             borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
           },
@@ -173,7 +156,7 @@ function lineStyleStr(n: number): "solid" | "dashed" {
   return n === 0 ? "solid" : "dashed";
 }
 
-// ── Build price-line overlay styles ──────────────────────────────────────────
+// ── Price-line overlay styles ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function plStyles(cfg: PriceLineConfig): any {
@@ -183,12 +166,8 @@ function plStyles(cfg: PriceLineConfig): any {
   return {
     line: { color: lineColor, size: cfg.lineWidth, style: lineStyleStr(cfg.lineStyle) },
     text: {
-      color: labelText,
-      backgroundColor: labelBg,
-      borderColor: labelBg,
-      borderRadius: 3,
-      paddingLeft: 5, paddingRight: 5,
-      paddingTop: 2,  paddingBottom: 2,
+      color: labelText, backgroundColor: labelBg, borderColor: labelBg,
+      borderRadius: 3, paddingLeft: 5, paddingRight: 5, paddingTop: 2, paddingBottom: 2,
     },
   };
 }
@@ -203,6 +182,9 @@ interface KlineChartWidgetProps {
   orders?: TradeOrder[];
   showOrders?: boolean;
   onOrderClick?: (order: TradeOrder) => void;
+  pendingOrderType?: "buy" | "sell" | null;
+  onOrderPlace?: (order: TradeOrder) => void;
+  onCancelPending?: () => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -210,17 +192,26 @@ type WsStatus = "connecting" | "live" | "offline";
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function KlineChartWidget({
-  priceLines, theme, chartBg, gridColor, orders, showOrders, onOrderClick,
+  priceLines, theme, chartBg, gridColor,
+  orders, showOrders, onOrderClick,
+  pendingOrderType, onOrderPlace, onCancelPending,
 }: KlineChartWidgetProps) {
-  const containerRef   = useRef<HTMLDivElement>(null);
-  const chartRef       = useRef<Chart | null>(null);
-  const wsRef          = useRef<WebSocket | null>(null);
-  const onOrderClickRef = useRef(onOrderClick);
-  useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const chartRef          = useRef<Chart | null>(null);
+  const wsRef             = useRef<WebSocket | null>(null);
 
-  // candle high/low map keyed by SECONDS (same as order.time)
-  const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
-  // bumped after getBars finishes so the orders effect re-runs
+  // Stable callback refs
+  const onOrderClickRef   = useRef(onOrderClick);
+  const onOrderPlaceRef   = useRef(onOrderPlace);
+  const onCancelRef       = useRef(onCancelPending);
+  const pendingTypeRef    = useRef(pendingOrderType ?? null);
+  useEffect(() => { onOrderClickRef.current  = onOrderClick;    }, [onOrderClick]);
+  useEffect(() => { onOrderPlaceRef.current  = onOrderPlace;    }, [onOrderPlace]);
+  useEffect(() => { onCancelRef.current      = onCancelPending; }, [onCancelPending]);
+  useEffect(() => { pendingTypeRef.current   = pendingOrderType ?? null; }, [pendingOrderType]);
+
+  // Candle high/low map keyed by seconds
+  const candleMapRef      = useRef<Map<number, { high: number; low: number }>>(new Map());
   const [candleMapVersion, setCandleMapVersion] = useState(0);
 
   const [interval, setIntervalState] = useState<Interval>(() => {
@@ -233,31 +224,29 @@ export function KlineChartWidget({
 
   const [wsStatus, setWsStatus] = useState<WsStatus>("connecting");
 
-  // Track which overlay IDs we've created so we can diff
-  const plIds    = useRef<Set<string>>(new Set());
-  const orderIds = useRef<Set<string>>(new Set());
-  // full order data by overlay id (for click callback)
+  const plIds        = useRef<Set<string>>(new Set());
+  const orderIds     = useRef<Set<string>>(new Set());
   const orderDataMap = useRef<Map<string, TradeOrder>>(new Map());
 
   // ── Init chart ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
+    const container = containerRef.current;
 
     ensureOverlaysRegistered();
 
-    const chart = init(containerRef.current);
+    const chart = init(container);
     if (!chart) return;
     chartRef.current = chart;
 
     applyStyles(chart, theme, chartBg, gridColor);
 
+    // ── DataLoader ────────────────────────────────────────────────────────────
     chart.setDataLoader({
       getBars: ({ period, callback }) => {
         const binanceIv = periodToBinanceInterval(period as Period);
         setWsStatus("connecting");
-        fetch(
-          `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${binanceIv}&limit=1000`
-        )
+        fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${binanceIv}&limit=1000`)
           .then((r) => r.json())
           .then((data: unknown[][]) => {
             const bars: KLineData[] = data.map((k) => ({
@@ -268,11 +257,8 @@ export function KlineChartWidget({
               close:  parseFloat(k[4] as string),
               volume: parseFloat(k[5] as string),
             }));
-            // Build candle map keyed by seconds
             const map = new Map<number, { high: number; low: number }>();
-            for (const b of bars) {
-              map.set(Math.floor(b.timestamp / 1000), { high: b.high, low: b.low });
-            }
+            for (const b of bars) map.set(Math.floor(b.timestamp / 1000), { high: b.high, low: b.low });
             candleMapRef.current = map;
             setCandleMapVersion((v) => v + 1);
             callback(bars, false);
@@ -282,43 +268,72 @@ export function KlineChartWidget({
 
       subscribeBar: ({ period, callback }) => {
         const binanceIv = periodToBinanceInterval(period as Period);
-        const ws = new WebSocket(
-          `wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceIv}`
-        );
+        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceIv}`);
         wsRef.current = ws;
         ws.onopen  = () => setWsStatus("live");
         ws.onerror = () => setWsStatus("offline");
         ws.onclose = () => setWsStatus("offline");
         ws.onmessage = (e) => {
           try {
-            const msg = JSON.parse(e.data as string);
-            const k = msg.k;
+            const { k } = JSON.parse(e.data as string);
             const bar: KLineData = {
               timestamp: k.t as number,
-              open:   parseFloat(k.o as string),
-              high:   parseFloat(k.h as string),
-              low:    parseFloat(k.l as string),
-              close:  parseFloat(k.c as string),
-              volume: parseFloat(k.v as string),
+              open:   parseFloat(k.o), high: parseFloat(k.h),
+              low:    parseFloat(k.l), close: parseFloat(k.c),
+              volume: parseFloat(k.v),
             };
-            candleMapRef.current.set(Math.floor((k.t as number) / 1000), {
-              high: bar.high, low: bar.low,
-            });
+            candleMapRef.current.set(Math.floor((k.t as number) / 1000), { high: bar.high, low: bar.low });
             callback(bar);
           } catch {}
         };
       },
 
-      unsubscribeBar: () => {
-        wsRef.current?.close();
-        wsRef.current = null;
-      },
+      unsubscribeBar: () => { wsRef.current?.close(); wsRef.current = null; },
     });
 
     chart.setSymbol({ shortName: "BTC/USDT", pricePrecision: 2 });
     chart.setPeriod(intervalToPeriod(interval));
 
+    // ── Click-to-place order ──────────────────────────────────────────────────
+    const onCandleClick = (data: unknown) => {
+      if (!pendingTypeRef.current) return;
+      const ch = data as { x?: number; y?: number; timestamp?: number };
+      if (ch.x === undefined || ch.y === undefined) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pts = chart.convertFromPixel([{ x: ch.x, y: ch.y }]) as any;
+      const pt  = Array.isArray(pts) ? pts[0] : pts;
+      if (!pt || pt.value === undefined) return;
+
+      const ts = ch.timestamp ?? pt.timestamp;
+      if (!ts) return;
+
+      onOrderPlaceRef.current?.({
+        id:    `order-${Date.now()}`,
+        time:  Math.floor(ts / 1000),
+        price: Math.round(Number(pt.value) * 100) / 100,
+        type:  pendingTypeRef.current,
+      });
+    };
+
+    chart.subscribeAction("onCandleBarClick", onCandleClick);
+
+    // ── Cursor ────────────────────────────────────────────────────────────────
+    const onPointerMove = () => {
+      if (pendingTypeRef.current) container.style.cursor = "crosshair";
+    };
+    container.addEventListener("pointermove", onPointerMove);
+
+    // ── ESC to cancel ─────────────────────────────────────────────────────────
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancelRef.current?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
     return () => {
+      chart.unsubscribeAction("onCandleBarClick", onCandleClick);
+      container.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("keydown", onKeyDown);
       wsRef.current?.close();
       wsRef.current = null;
       dispose(chart);
@@ -352,17 +367,13 @@ export function KlineChartWidget({
     const visible = new Set(priceLines.filter((p) => p.visible).map((p) => p.id));
 
     for (const id of plIds.current) {
-      if (!visible.has(id)) {
-        chart.removeOverlay({ id: `pl-${id}` });
-        plIds.current.delete(id);
-      }
+      if (!visible.has(id)) { chart.removeOverlay({ id: `pl-${id}` }); plIds.current.delete(id); }
     }
 
     for (const cfg of priceLines) {
       if (!cfg.visible) continue;
       const overlayId = `pl-${cfg.id}`;
       const styles = plStyles(cfg);
-
       if (plIds.current.has(cfg.id)) {
         chart.overrideOverlay({ id: overlayId, points: [{ value: cfg.price }], extendData: cfg.label, styles });
       } else {
@@ -377,49 +388,34 @@ export function KlineChartWidget({
     const chart = chartRef.current;
     if (!chart) return;
 
-    // Remove stale markers
-    for (const id of orderIds.current) {
-      chart.removeOverlay({ id });
-    }
+    for (const id of orderIds.current) chart.removeOverlay({ id });
     orderIds.current.clear();
     orderDataMap.current.clear();
 
     if (!showOrders || !orders?.length) return;
 
-    const cmap = candleMapRef.current;
+    const cmap      = candleMapRef.current;
+    const container = containerRef.current;
 
     for (const order of orders) {
       const isBuy  = order.type === "buy";
       const id     = `order-${order.id}`;
       const candle = cmap.get(order.time);
-
-      // Anchor buy to candle low (marker sits below), sell to candle high (above)
-      const anchorPrice = isBuy
-        ? (candle?.low  ?? order.price)
-        : (candle?.high ?? order.price);
-
-      const container = containerRef.current;
+      const anchorPrice = isBuy ? (candle?.low ?? order.price) : (candle?.high ?? order.price);
 
       chart.createOverlay({
         name: isBuy ? "buyMarker" : "sellMarker",
         id,
         points: [{ timestamp: order.time * 1000, value: anchorPrice }],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onClick: () => {
-          onOrderClickRef.current?.(order);
-        },
-        onMouseEnter: () => {
-          if (container) container.style.cursor = "pointer";
-        },
-        onMouseLeave: () => {
-          if (container) container.style.cursor = "";
-        },
+        onClick: () => { onOrderClickRef.current?.(order); },
+        onMouseEnter: () => { if (container && !pendingTypeRef.current) container.style.cursor = "pointer"; },
+        onMouseLeave: () => { if (container && !pendingTypeRef.current) container.style.cursor = ""; },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       orderIds.current.add(id);
       orderDataMap.current.set(id, order);
     }
-  // candleMapVersion ensures re-draw after historical data loads
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, showOrders, theme, candleMapVersion]);
 
@@ -473,27 +469,34 @@ export function KlineChartWidget({
         style={{
           fontSize: "var(--text-label)",
           background: "var(--secondary)",
-          color:
-            wsStatus === "live"
-              ? "var(--positive-bg-default)"
-              : wsStatus === "connecting"
-              ? "var(--muted-foreground)"
-              : "var(--negative-bg-default)",
+          color: wsStatus === "live" ? "var(--positive-bg-default)" : wsStatus === "connecting" ? "var(--muted-foreground)" : "var(--negative-bg-default)",
         }}
       >
         <span
           className={`inline-block w-[6px] h-[6px] rounded-full shrink-0 ${wsStatus === "live" ? "animate-pulse" : ""}`}
           style={{
-            background:
-              wsStatus === "live"
-                ? "var(--positive-bg-default)"
-                : wsStatus === "connecting"
-                ? "var(--muted-foreground)"
-                : "var(--negative-bg-default)",
+            background: wsStatus === "live" ? "var(--positive-bg-default)" : wsStatus === "connecting" ? "var(--muted-foreground)" : "var(--negative-bg-default)",
           }}
         />
         {wsStatus === "live" ? "LIVE" : wsStatus === "connecting" ? "..." : "OFFLINE"}
       </div>
+
+      {/* Pending order banner */}
+      {pendingOrderType && (
+        <div
+          className="absolute top-[44px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-[8px] px-[12px] py-[6px] rounded-[var(--radius)] pointer-events-none"
+          style={{
+            background: pendingOrderType === "buy" ? css("--positive-bg-default") : css("--negative-bg-default"),
+            color: pendingOrderType === "buy" ? css("--positive-over") : css("--negative-over"),
+            fontSize: "var(--text-label)",
+            fontWeight: "600",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}
+        >
+          {pendingOrderType === "buy" ? "↑ Click to place Buy order" : "↓ Click to place Sell order"}
+          <span style={{ opacity: 0.7, fontWeight: 400 }}>· ESC to cancel</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -519,25 +522,15 @@ function applyStyles(
     candle: {
       bar: {
         upColor, downColor,
-        noChangeColor: css("--muted-foreground"),
-        upBorderColor:       upColor,
-        downBorderColor:     downColor,
+        noChangeColor:       css("--muted-foreground"),
+        upBorderColor:       upColor,   downBorderColor:     downColor,
         noChangeBorderColor: css("--muted-foreground"),
-        upWickColor:         upColor,
-        downWickColor:       downColor,
+        upWickColor:         upColor,   downWickColor:       downColor,
         noChangeWickColor:   css("--muted-foreground"),
       },
     },
-    xAxis: {
-      tickText: { color: textColor },
-      tickLine: { color: gridClr },
-      axisLine: { color: gridClr },
-    },
-    yAxis: {
-      tickText: { color: textColor },
-      tickLine: { color: gridClr },
-      axisLine: { color: gridClr },
-    },
+    xAxis: { tickText: { color: textColor }, tickLine: { color: gridClr }, axisLine: { color: gridClr } },
+    yAxis: { tickText: { color: textColor }, tickLine: { color: gridClr }, axisLine: { color: gridClr } },
     crosshair: {
       horizontal: {
         line: { color: css("--accent-bg-default") },

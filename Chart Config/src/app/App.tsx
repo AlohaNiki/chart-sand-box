@@ -535,6 +535,9 @@ export default function App() {
                   orders={orders}
                   showOrders={showOrders}
                   onOrderClick={setSelectedOrder}
+                  pendingOrderType={pendingOrderType}
+                  onOrderPlace={handleOrderPlace}
+                  onCancelPending={() => setPendingOrderType(null)}
                 />
               )}
             </div>
