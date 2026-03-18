@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
+import { SuperChartsWidget } from "./components/supercharts-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
 import { ChangelogPanel } from "./components/changelog-panel";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
@@ -242,6 +243,7 @@ export default function App() {
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [chartMode, setChartMode] = useState<"lightweight" | "supercharts">("lightweight");
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -418,16 +420,12 @@ export default function App() {
       >
         {/* Header */}
         <header
-          className="flex items-center justify-between px-[16px] py-[12px] border-b border-border shrink-0"
-          style={{ background: "var(--sidebar)" }}
+          className="grid items-center px-[16px] py-[12px] border-b border-border shrink-0"
+          style={{ background: "var(--sidebar)", gridTemplateColumns: "1fr auto 1fr" }}
         >
+          {/* Left: logo */}
           <div className="flex items-center gap-[12px]">
-            <h3
-              style={{
-                color: "var(--foreground)",
-                fontFamily: "'Inter Display', sans-serif",
-              }}
-            >
+            <h3 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
               Chart Console
             </h3>
             <span
@@ -442,7 +440,32 @@ export default function App() {
               BTC/USDT
             </span>
           </div>
-          <div className="flex items-center gap-[8px]">
+
+          {/* Center: chart mode toggle */}
+          <div
+            className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
+            style={{ background: "var(--secondary)" }}
+          >
+            {(["lightweight", "supercharts"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setChartMode(mode)}
+                className="px-[12px] py-[4px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+                style={{
+                  fontFamily: "'Inter Display', sans-serif",
+                  fontSize: "var(--text-label)",
+                  background: chartMode === mode ? "var(--card)" : "transparent",
+                  color: chartMode === mode ? "var(--foreground)" : "var(--muted-foreground)",
+                  fontWeight: chartMode === mode ? "600" : "400",
+                }}
+              >
+                {mode === "lightweight" ? "Lightweight" : "SuperCharts"}
+              </button>
+            ))}
+          </div>
+
+          {/* Right: action buttons */}
+          <div className="flex items-center gap-[8px] justify-end">
             <button
               onClick={handleReset}
               className="flex items-center gap-[6px] px-[12px] py-[6px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
@@ -486,19 +509,23 @@ export default function App() {
               className="w-full h-[400px] md:h-full rounded-[var(--radius-card)] overflow-hidden border border-border"
               style={{ background: "var(--card)" }}
             >
-              <ChartWidget
-                priceLines={priceLines}
-                onPriceLineDrag={handleChartDrag}
-                theme={theme}
-                chartBg={chartBg}
-                gridColor={gridColor}
-                orders={orders}
-                showOrders={showOrders}
-                pendingOrderType={pendingOrderType}
-                onOrderPlace={handleOrderPlace}
-                onCancelPending={() => setPendingOrderType(null)}
-                onOrderClick={setSelectedOrder}
-              />
+              {chartMode === "lightweight" ? (
+                <ChartWidget
+                  priceLines={priceLines}
+                  onPriceLineDrag={handleChartDrag}
+                  theme={theme}
+                  chartBg={chartBg}
+                  gridColor={gridColor}
+                  orders={orders}
+                  showOrders={showOrders}
+                  pendingOrderType={pendingOrderType}
+                  onOrderPlace={handleOrderPlace}
+                  onCancelPending={() => setPendingOrderType(null)}
+                  onOrderClick={setSelectedOrder}
+                />
+              ) : (
+                <SuperChartsWidget theme={theme} />
+              )}
             </div>
           </div>
 
