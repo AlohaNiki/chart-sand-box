@@ -534,6 +534,7 @@ export default function App() {
                   gridColor={gridColor}
                   orders={orders}
                   showOrders={showOrders}
+                  onOrderClick={setSelectedOrder}
                 />
               )}
             </div>

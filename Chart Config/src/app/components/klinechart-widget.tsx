@@ -11,9 +11,10 @@ function css(varName: string): string {
 }
 
 // ── Custom overlay registration ───────────────────────────────────────────────
-// The built-in "priceLine" overlay ignores extendData and uses blue defaults.
-// We register "labeledPriceLine" once — draws a colored line + label badge on
-// the right edge, both styled via the overlay's own styles.line / styles.text.
+// Called once at module level. Registers:
+//   • labeledPriceLine  — horizontal line + label badge on right edge
+//   • buyMarker         — badge below candle low, tail pointing UP
+//   • sellMarker        — badge above candle high, tail pointing DOWN
 
 let _overlaysRegistered = false;
 
@@ -21,6 +22,7 @@ function ensureOverlaysRegistered() {
   if (_overlaysRegistered) return;
   _overlaysRegistered = true;
 
+  // ── Labeled price line ──────────────────────────────────────────────────────
   registerOverlay({
     name: "labeledPriceLine",
     totalStep: 2,
@@ -30,7 +32,10 @@ function ensureOverlaysRegistered() {
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const label = typeof overlay.extendData === "string" ? overlay.extendData : "";
       const value = (overlay.points as Array<{ value?: number }>)[0]?.value ?? 0;
-      const priceStr = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const priceStr = value.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
       const displayText = label ? `${label}  ${priceStr}` : priceStr;
       const y = coordinates[0]?.y ?? 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,6 +48,92 @@ function ensureOverlaysRegistered() {
         {
           type: "text",
           attrs: { x: bounding.width - 6, y, text: displayText, align: "right", baseline: "middle" },
+          ignoreEvent: true,
+        },
+      ] as any[];
+    },
+  });
+
+  // ── Buy marker ──────────────────────────────────────────────────────────────
+  // Point anchored at candle low; badge rendered BELOW the anchor; tail points UP
+  registerOverlay({
+    name: "buyMarker",
+    totalStep: 2,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ coordinates }) => {
+      const x = coordinates[0]?.x ?? 0;
+      const y = coordinates[0]?.y ?? 0;
+      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 26, R = 3;
+      const tipY  = y + GAP;
+      const baseY = tipY + TAIL;
+      const bg = css("--positive-bg-default");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return [
+        {
+          type: "rect",
+          attrs: { x: x - W / 2, y: baseY, width: W, height: H },
+          styles: { style: "fill", color: bg, borderColor: bg, borderRadius: R, borderSize: 0 },
+          ignoreEvent: false,
+        },
+        {
+          type: "polygon",
+          attrs: { coordinates: [{ x: x - HALF_TW, y: baseY }, { x: x + HALF_TW, y: baseY }, { x, y: tipY }] },
+          styles: { style: "fill", color: bg, borderColor: bg },
+          ignoreEvent: false,
+        },
+        {
+          type: "text",
+          attrs: { x, y: baseY + H / 2, text: "B", align: "center", baseline: "middle" },
+          styles: {
+            color: "#FFFFFF", size: 10, weight: 600,
+            backgroundColor: "transparent", borderColor: "transparent",
+            borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
+          },
+          ignoreEvent: true,
+        },
+      ] as any[];
+    },
+  });
+
+  // ── Sell marker ─────────────────────────────────────────────────────────────
+  // Point anchored at candle high; badge rendered ABOVE the anchor; tail points DOWN
+  registerOverlay({
+    name: "sellMarker",
+    totalStep: 2,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ coordinates }) => {
+      const x = coordinates[0]?.x ?? 0;
+      const y = coordinates[0]?.y ?? 0;
+      const GAP = 4, TAIL = 5, HALF_TW = 4, H = 18, W = 26, R = 3;
+      const tipY  = y - GAP;
+      const baseY = tipY - TAIL;
+      const bg = css("--negative-bg-default");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return [
+        {
+          type: "rect",
+          attrs: { x: x - W / 2, y: baseY - H, width: W, height: H },
+          styles: { style: "fill", color: bg, borderColor: bg, borderRadius: R, borderSize: 0 },
+          ignoreEvent: false,
+        },
+        {
+          type: "polygon",
+          attrs: { coordinates: [{ x: x - HALF_TW, y: baseY }, { x: x + HALF_TW, y: baseY }, { x, y: tipY }] },
+          styles: { style: "fill", color: bg, borderColor: bg },
+          ignoreEvent: false,
+        },
+        {
+          type: "text",
+          attrs: { x, y: baseY - H / 2, text: "S", align: "center", baseline: "middle" },
+          styles: {
+            color: "#FFFFFF", size: 10, weight: 600,
+            backgroundColor: "transparent", borderColor: "transparent",
+            borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
+          },
           ignoreEvent: true,
         },
       ] as any[];
@@ -86,24 +177,18 @@ function lineStyleStr(n: number): "solid" | "dashed" {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function plStyles(cfg: PriceLineConfig): any {
-  const lineColor  = resolveColor(cfg.color);
-  const labelBg    = resolveColor(cfg.labelColor);
-  const labelText  = resolveColor(cfg.labelTextColor);
+  const lineColor = resolveColor(cfg.color);
+  const labelBg   = resolveColor(cfg.labelColor);
+  const labelText = resolveColor(cfg.labelTextColor);
   return {
-    line: {
-      color: lineColor,
-      size: cfg.lineWidth,
-      style: lineStyleStr(cfg.lineStyle),
-    },
+    line: { color: lineColor, size: cfg.lineWidth, style: lineStyleStr(cfg.lineStyle) },
     text: {
       color: labelText,
       backgroundColor: labelBg,
       borderColor: labelBg,
       borderRadius: 3,
-      paddingLeft: 5,
-      paddingRight: 5,
-      paddingTop: 2,
-      paddingBottom: 2,
+      paddingLeft: 5, paddingRight: 5,
+      paddingTop: 2,  paddingBottom: 2,
     },
   };
 }
@@ -117,6 +202,7 @@ interface KlineChartWidgetProps {
   gridColor?: string;
   orders?: TradeOrder[];
   showOrders?: boolean;
+  onOrderClick?: (order: TradeOrder) => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -124,11 +210,18 @@ type WsStatus = "connecting" | "live" | "offline";
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function KlineChartWidget({
-  priceLines, theme, chartBg, gridColor, orders, showOrders,
+  priceLines, theme, chartBg, gridColor, orders, showOrders, onOrderClick,
 }: KlineChartWidgetProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<Chart | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const containerRef   = useRef<HTMLDivElement>(null);
+  const chartRef       = useRef<Chart | null>(null);
+  const wsRef          = useRef<WebSocket | null>(null);
+  const onOrderClickRef = useRef(onOrderClick);
+  useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
+
+  // candle high/low map keyed by SECONDS (same as order.time)
+  const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
+  // bumped after getBars finishes so the orders effect re-runs
+  const [candleMapVersion, setCandleMapVersion] = useState(0);
 
   const [interval, setIntervalState] = useState<Interval>(() => {
     try {
@@ -141,8 +234,10 @@ export function KlineChartWidget({
   const [wsStatus, setWsStatus] = useState<WsStatus>("connecting");
 
   // Track which overlay IDs we've created so we can diff
-  const plIds = useRef<Set<string>>(new Set());
+  const plIds    = useRef<Set<string>>(new Set());
   const orderIds = useRef<Set<string>>(new Set());
+  // full order data by overlay id (for click callback)
+  const orderDataMap = useRef<Map<string, TradeOrder>>(new Map());
 
   // ── Init chart ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -154,10 +249,8 @@ export function KlineChartWidget({
     if (!chart) return;
     chartRef.current = chart;
 
-    // Apply initial styles (colors etc.)
     applyStyles(chart, theme, chartBg, gridColor);
 
-    // DataLoader: getBars + subscribeBar / unsubscribeBar
     chart.setDataLoader({
       getBars: ({ period, callback }) => {
         const binanceIv = periodToBinanceInterval(period as Period);
@@ -169,12 +262,19 @@ export function KlineChartWidget({
           .then((data: unknown[][]) => {
             const bars: KLineData[] = data.map((k) => ({
               timestamp: k[0] as number,
-              open:  parseFloat(k[1] as string),
-              high:  parseFloat(k[2] as string),
-              low:   parseFloat(k[3] as string),
-              close: parseFloat(k[4] as string),
+              open:   parseFloat(k[1] as string),
+              high:   parseFloat(k[2] as string),
+              low:    parseFloat(k[3] as string),
+              close:  parseFloat(k[4] as string),
               volume: parseFloat(k[5] as string),
             }));
+            // Build candle map keyed by seconds
+            const map = new Map<number, { high: number; low: number }>();
+            for (const b of bars) {
+              map.set(Math.floor(b.timestamp / 1000), { high: b.high, low: b.low });
+            }
+            candleMapRef.current = map;
+            setCandleMapVersion((v) => v + 1);
             callback(bars, false);
           })
           .catch(() => callback([], true));
@@ -193,14 +293,18 @@ export function KlineChartWidget({
           try {
             const msg = JSON.parse(e.data as string);
             const k = msg.k;
-            callback({
+            const bar: KLineData = {
               timestamp: k.t as number,
               open:   parseFloat(k.o as string),
               high:   parseFloat(k.h as string),
               low:    parseFloat(k.l as string),
               close:  parseFloat(k.c as string),
               volume: parseFloat(k.v as string),
+            };
+            candleMapRef.current.set(Math.floor((k.t as number) / 1000), {
+              high: bar.high, low: bar.low,
             });
+            callback(bar);
           } catch {}
         };
       },
@@ -221,6 +325,7 @@ export function KlineChartWidget({
       chartRef.current = null;
       plIds.current.clear();
       orderIds.current.clear();
+      orderDataMap.current.clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -246,7 +351,6 @@ export function KlineChartWidget({
 
     const visible = new Set(priceLines.filter((p) => p.visible).map((p) => p.id));
 
-    // Remove overlays that were deleted or hidden
     for (const id of plIds.current) {
       if (!visible.has(id)) {
         chart.removeOverlay({ id: `pl-${id}` });
@@ -254,28 +358,15 @@ export function KlineChartWidget({
       }
     }
 
-    // Add / update visible ones
     for (const cfg of priceLines) {
       if (!cfg.visible) continue;
       const overlayId = `pl-${cfg.id}`;
       const styles = plStyles(cfg);
 
       if (plIds.current.has(cfg.id)) {
-        chart.overrideOverlay({
-          id: overlayId,
-          points: [{ value: cfg.price }],
-          extendData: cfg.label,
-          styles,
-        });
+        chart.overrideOverlay({ id: overlayId, points: [{ value: cfg.price }], extendData: cfg.label, styles });
       } else {
-        chart.createOverlay({
-          name: "labeledPriceLine",
-          id: overlayId,
-          points: [{ value: cfg.price }],
-          styles,
-          extendData: cfg.label,
-          lock: true,
-        });
+        chart.createOverlay({ name: "labeledPriceLine", id: overlayId, points: [{ value: cfg.price }], styles, extendData: cfg.label, lock: true });
         plIds.current.add(cfg.id);
       }
     }
@@ -286,44 +377,51 @@ export function KlineChartWidget({
     const chart = chartRef.current;
     if (!chart) return;
 
-    // Remove all old markers
+    // Remove stale markers
     for (const id of orderIds.current) {
       chart.removeOverlay({ id });
     }
     orderIds.current.clear();
+    orderDataMap.current.clear();
 
     if (!showOrders || !orders?.length) return;
 
+    const cmap = candleMapRef.current;
+
     for (const order of orders) {
-      const id = `order-${order.id}`;
-      const isBuy = order.type === "buy";
-      const color = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
-      const label = isBuy ? "Buy" : "Sell";
+      const isBuy  = order.type === "buy";
+      const id     = `order-${order.id}`;
+      const candle = cmap.get(order.time);
+
+      // Anchor buy to candle low (marker sits below), sell to candle high (above)
+      const anchorPrice = isBuy
+        ? (candle?.low  ?? order.price)
+        : (candle?.high ?? order.price);
+
+      const container = containerRef.current;
 
       chart.createOverlay({
-        name: "simpleAnnotation",
+        name: isBuy ? "buyMarker" : "sellMarker",
         id,
-        points: [{ timestamp: order.time * 1000, value: order.price }],
-        extendData: label,
+        points: [{ timestamp: order.time * 1000, value: anchorPrice }],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        styles: {
-          line:    { color },
-          polygon: { color, borderColor: color },
-          text: {
-            color: "#FFFFFF",
-            backgroundColor: color,
-            borderColor: color,
-            borderRadius: 3,
-            paddingLeft: 4,
-            paddingRight: 4,
-            paddingTop: 2,
-            paddingBottom: 2,
-          },
-        } as any,
-      });
+        onClick: () => {
+          onOrderClickRef.current?.(order);
+        },
+        onMouseEnter: () => {
+          if (container) container.style.cursor = "pointer";
+        },
+        onMouseLeave: () => {
+          if (container) container.style.cursor = "";
+        },
+      } as any);
+
       orderIds.current.add(id);
+      orderDataMap.current.set(id, order);
     }
-  }, [orders, showOrders, theme]);
+  // candleMapVersion ensures re-draw after historical data loads
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, showOrders, theme, candleMapVersion]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -331,7 +429,6 @@ export function KlineChartWidget({
       className="relative w-full h-full min-h-[400px]"
       style={{ fontFamily: "'Inter Display', sans-serif" }}
     >
-      {/* Chart canvas — background set via CSS so klinecharts renders on top */}
       <div
         ref={containerRef}
         className="w-full h-full"
@@ -409,7 +506,7 @@ function applyStyles(
   chartBg: string | undefined,
   gridColor: string | undefined
 ) {
-  const gridClr = resolveColor(gridColor ?? "--contrast-quaternary");
+  const gridClr   = resolveColor(gridColor ?? "--contrast-quaternary");
   const upColor   = css("--positive-bg-default");
   const downColor = css("--negative-bg-default");
   const textColor = css("--contrast-secondary");
@@ -421,40 +518,38 @@ function applyStyles(
     },
     candle: {
       bar: {
-        upColor,
-        downColor,
+        upColor, downColor,
         noChangeColor: css("--muted-foreground"),
-        upBorderColor:    upColor,
-        downBorderColor:  downColor,
+        upBorderColor:       upColor,
+        downBorderColor:     downColor,
         noChangeBorderColor: css("--muted-foreground"),
-        upWickColor:    upColor,
-        downWickColor:  downColor,
-        noChangeWickColor: css("--muted-foreground"),
+        upWickColor:         upColor,
+        downWickColor:       downColor,
+        noChangeWickColor:   css("--muted-foreground"),
       },
     },
     xAxis: {
-      tickText:  { color: textColor },
-      tickLine:  { color: gridClr },
-      axisLine:  { color: gridClr },
+      tickText: { color: textColor },
+      tickLine: { color: gridClr },
+      axisLine: { color: gridClr },
     },
     yAxis: {
-      tickText:  { color: textColor },
-      tickLine:  { color: gridClr },
-      axisLine:  { color: gridClr },
+      tickText: { color: textColor },
+      tickLine: { color: gridClr },
+      axisLine: { color: gridClr },
     },
     crosshair: {
       horizontal: {
-        line:  { color: css("--accent-bg-default") },
-        text:  { backgroundColor: css("--accent-bg-default"), color: css("--accent-over") },
+        line: { color: css("--accent-bg-default") },
+        text: { backgroundColor: css("--accent-bg-default"), color: css("--accent-over") },
       },
       vertical: {
-        line:  { color: css("--accent-bg-default") },
-        text:  { backgroundColor: css("--accent-bg-default"), color: css("--accent-over") },
+        line: { color: css("--accent-bg-default") },
+        text: { backgroundColor: css("--accent-bg-default"), color: css("--accent-over") },
       },
     },
   } as Parameters<Chart["setStyles"]>[0]);
 
-  // Sync container background via DOM (klinecharts renders on canvas, so we set it on the wrapper)
   const el = (chart as unknown as { getDom: () => HTMLElement }).getDom?.();
   if (el) el.style.background = resolveColor(chartBg ?? "--surface-elevation-1");
 }
