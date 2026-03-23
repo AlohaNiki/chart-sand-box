@@ -196,7 +196,7 @@ class PnLBadgesRenderer {
 
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
       const fontSize = 12 * hpr;
-      ctx.font = `${fontSize}px ui-monospace, "Cascadia Code", "Fira Code", monospace`;
+      ctx.font = `${fontSize}px "Inter Mono", ui-monospace, monospace`;
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
 
