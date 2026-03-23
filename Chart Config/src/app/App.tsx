@@ -353,6 +353,10 @@ export default function App() {
     setPendingOrderType(null);
   }, []);
 
+  const handleOrderPriceChange = useCallback((id: string, newPrice: number) => {
+    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, price: newPrice } : o));
+  }, []);
+
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -622,6 +626,7 @@ export default function App() {
                   onOrderPlace={handleOrderPlace}
                   onCancelPending={() => setPendingOrderType(null)}
                   onOrderClick={setSelectedOrder}
+                  onOrderPriceChange={handleOrderPriceChange}
                 />
               ) : chartMode === "supercharts" ? (
                 <SuperChartsWidget theme={theme} />

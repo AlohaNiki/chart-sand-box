@@ -195,8 +195,8 @@ class PnLBadgesRenderer {
     if (!this.series || !this.currentPrice || !this.orders.length) return;
 
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
-      const fontSize = 10 * hpr;
-      ctx.font = `500 ${fontSize}px "Inter Display", sans-serif`;
+      const fontSize = 12 * hpr;
+      ctx.font = `${fontSize}px ui-monospace, "Cascadia Code", "Fira Code", monospace`;
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
 
@@ -216,7 +216,7 @@ class PnLBadgesRenderer {
         const isProfit = levPct >= 0;
         const sign = isProfit ? "+" : "";
         const text = pnlUsdt !== null
-          ? `${sign}${pnlUsdt.toFixed(2)} USDT  ${sign}${levPct.toFixed(2)}%`
+          ? `${sign}${pnlUsdt.toFixed(2)} USDT`
           : `${sign}${levPct.toFixed(2)}%`;
 
         const bg  = isProfit ? css("--positive-bg-default") : css("--negative-bg-default");
@@ -374,6 +374,7 @@ interface ChartWidgetProps {
   onOrderPlace?: (order: TradeOrder) => void;
   onCancelPending?: () => void;
   onOrderClick?: (order: TradeOrder) => void;
+  onOrderPriceChange?: (id: string, newPrice: number) => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -392,7 +393,7 @@ function rgba(rgbVar: string, alpha: number): string {
 
 export function ChartWidget({
   priceLines, onPriceLineDrag, theme, chartBg, gridColor,
-  orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick,
+  orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick, onOrderPriceChange,
 }: ChartWidgetProps) {
   const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -421,8 +422,11 @@ export function ChartWidget({
   const onOrderPlaceRef = useRef(onOrderPlace);
   const onCancelPendingRef = useRef(onCancelPending);
   const onOrderClickRef = useRef(onOrderClick);
+  const onOrderPriceChangeRef = useRef(onOrderPriceChange);
+  const ordersRef = useRef(orders ?? []);
   const pendingOrderTypeRef = useRef(pendingOrderType ?? null);
   const draggingIdRef = useRef<string | null>(null);
+  const draggingOrderIdRef = useRef<string | null>(null);
 
   const [interval, setInterval] = useState<Interval>(() => {
     try {
@@ -441,6 +445,8 @@ export function ChartWidget({
   useEffect(() => { onOrderPlaceRef.current = onOrderPlace; }, [onOrderPlace]);
   useEffect(() => { onCancelPendingRef.current = onCancelPending; }, [onCancelPending]);
   useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
+  useEffect(() => { onOrderPriceChangeRef.current = onOrderPriceChange; }, [onOrderPriceChange]);
+  useEffect(() => { ordersRef.current = orders ?? []; }, [orders]);
   useEffect(() => { pendingOrderTypeRef.current = pendingOrderType ?? null; }, [pendingOrderType]);
 
   useEffect(() => {
@@ -507,8 +513,30 @@ export function ChartWidget({
       return closestId;
     };
 
+    const findNearestOrderLine = (clientY: number): string | null => {
+      const rect = container.getBoundingClientRect();
+      const y = clientY - rect.top;
+      let closestId: string | null = null, closestDist = Infinity;
+      for (const order of ordersRef.current) {
+        const coord = series.priceToCoordinate(order.price);
+        if (coord === null) continue;
+        const dist = Math.abs(coord - y);
+        if (dist < closestDist && dist < SNAP_PX) { closestDist = dist; closestId = order.id; }
+      }
+      return closestId;
+    };
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return;
+      const nearOrderId = findNearestOrderLine(e.clientY);
+      if (nearOrderId) {
+        e.preventDefault(); e.stopPropagation();
+        draggingOrderIdRef.current = nearOrderId;
+        container.setPointerCapture(e.pointerId);
+        chart.applyOptions({ handleScroll: false, handleScale: false });
+        container.style.cursor = "ns-resize";
+        return;
+      }
       const nearId = findNearestLine(e.clientY);
       if (!nearId) return;
       e.preventDefault(); e.stopPropagation();
@@ -519,7 +547,13 @@ export function ChartWidget({
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (draggingIdRef.current) {
+      if (draggingOrderIdRef.current) {
+        const rect = container.getBoundingClientRect();
+        const price = series.coordinateToPrice(e.clientY - rect.top);
+        if (price !== null) {
+          onOrderPriceChangeRef.current?.(draggingOrderIdRef.current, Math.round(Number(price) * 100) / 100);
+        }
+      } else if (draggingIdRef.current) {
         const rect = container.getBoundingClientRect();
         const price = series.coordinateToPrice(e.clientY - rect.top);
         if (price !== null && onPriceLineDragRef.current) {
@@ -531,12 +565,18 @@ export function ChartWidget({
         const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
         const onMarker = plugin?.getHitBoxes().some((hb) => mx >= hb.x && mx <= hb.x + hb.w && my >= hb.y && my <= hb.y + hb.h) ?? false;
         const nearId = findNearestLine(e.clientY);
-        container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : onMarker ? "pointer" : nearId ? "ns-resize" : "";
+        const nearOrderId = findNearestOrderLine(e.clientY);
+        container.style.cursor = pendingOrderTypeRef.current ? "crosshair" : onMarker ? "pointer" : (nearId || nearOrderId) ? "ns-resize" : "";
       }
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      if (draggingIdRef.current) {
+      if (draggingOrderIdRef.current) {
+        draggingOrderIdRef.current = null;
+        try { container.releasePointerCapture(e.pointerId); } catch {}
+        chart.applyOptions({ handleScroll: true, handleScale: true });
+        container.style.cursor = "";
+      } else if (draggingIdRef.current) {
         draggingIdRef.current = null;
         try { container.releasePointerCapture(e.pointerId); } catch {}
         chart.applyOptions({ handleScroll: true, handleScale: true });
