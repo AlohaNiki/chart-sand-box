@@ -4,6 +4,7 @@ import {
   createChart,
   ColorType,
   CandlestickSeries,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
   type CandlestickData,
@@ -339,6 +340,28 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
         const isLong  = order.type === "buy";
 
         band.set(openCt, closeCt, isLong);
+
+        // Entry price line
+        series.createPriceLine({
+          price: order.price,
+          color: isLong ? "#22c55e" : "#ef4444",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "Entry",
+        });
+
+        // Exit price line
+        if (order.closePrice !== undefined) {
+          series.createPriceLine({
+            price: order.closePrice,
+            color: isLong ? "#ef4444" : "#22c55e",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: "Exit",
+          });
+        }
 
         const markers: TradeMarker[] = [
           { time: openCt,  type: isLong ? "buy"  : "sell", price: order.price },
