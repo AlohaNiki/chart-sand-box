@@ -7,6 +7,7 @@ import {
   ColorType,
   CandlestickSeries,
   LineSeries,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
   type CandlestickData,
@@ -180,6 +181,91 @@ class OrderMarkersPrimitive {
   getOrders()   { return this._orders; }
 }
 
+// ── PnL badges primitive ──────────────────────────────────────────────────────
+
+class PnLBadgesRenderer {
+  orders: TradeOrder[] = [];
+  currentPrice = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  series: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chart: any = null;
+
+  draw(target: CanvasRenderingTarget2D): void {
+    if (!this.series || !this.currentPrice || !this.orders.length) return;
+
+    target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
+      const fontSize = 10 * hpr;
+      ctx.font = `500 ${fontSize}px "Inter Display", sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+
+      const PAD_H = 7 * hpr, PAD_V = 3 * vpr, R = 3 * hpr, LEFT = 8 * hpr;
+
+      for (const order of this.orders) {
+        const cy = this.series.priceToCoordinate(order.price);
+        if (cy === null) continue;
+        const ry = cy * vpr;
+
+        const isBuy  = order.type === "buy";
+        const rawPct = (this.currentPrice - order.price) / order.price;
+        const dirPct = rawPct * (isBuy ? 1 : -1);
+        const levPct = dirPct * (order.leverage ?? 1) * 100;
+        const pnlUsdt = order.volume !== undefined ? dirPct * order.volume : null;
+
+        const isProfit = levPct >= 0;
+        const sign = isProfit ? "+" : "";
+        const text = pnlUsdt !== null
+          ? `${sign}${pnlUsdt.toFixed(2)} USDT  ${sign}${levPct.toFixed(2)}%`
+          : `${sign}${levPct.toFixed(2)}%`;
+
+        const bg  = isProfit ? css("--positive-bg-default") : css("--negative-bg-default");
+        const fg  = isProfit ? css("--positive-over")       : css("--negative-over");
+
+        const W = ctx.measureText(text).width + PAD_H * 2;
+        const H = fontSize + PAD_V * 2;
+
+        ctx.save();
+        ctx.fillStyle = bg;
+        drawRoundedRect(ctx, LEFT, ry - H / 2, W, H, R);
+        ctx.fill();
+        ctx.fillStyle = fg;
+        ctx.fillText(text, LEFT + PAD_H, ry);
+        ctx.restore();
+      }
+    });
+  }
+}
+
+class PnLBadgesPrimitive {
+  private _renderer = new PnLBadgesRenderer();
+  private _views = [{ renderer: () => this._renderer, zOrder: () => "top" as const }];
+  private _requestUpdate?: () => void;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attached(param: any) {
+    this._renderer.series = param.series;
+    this._renderer.chart  = param.chart;
+    this._requestUpdate   = param.requestUpdate;
+  }
+  detached() {
+    this._renderer.series = null;
+    this._renderer.chart  = null;
+    this._requestUpdate   = undefined;
+  }
+  updateAllViews() {}
+  paneViews() { return this._views; }
+
+  setOrders(orders: TradeOrder[], show: boolean) {
+    this._renderer.orders = show ? orders : [];
+    this._requestUpdate?.();
+  }
+  setCurrentPrice(price: number) {
+    this._renderer.currentPrice = price;
+    this._requestUpdate?.();
+  }
+}
+
 // ── Indicator helpers ─────────────────────────────────────────────────────────
 
 function calcEMA(candles: CandlestickData<Time>[], period: number): LineData<Time>[] {
@@ -316,6 +402,9 @@ export function ChartWidget({
   const wsRef = useRef<WebSocket | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersPluginRef = useRef<any>(null);
+  const pnlPluginRef    = useRef<PnLBadgesPrimitive | null>(null);
+  const pnlPriceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
+  const currentPriceRef = useRef(0);
   const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
 
   // Candle data stored for indicator recalculation
@@ -398,6 +487,9 @@ export function ChartWidget({
     const orderPrimitive = new OrderMarkersPrimitive();
     series.attachPrimitive(orderPrimitive);
     markersPluginRef.current = orderPrimitive;
+    const pnlPrimitive = new PnLBadgesPrimitive();
+    series.attachPrimitive(pnlPrimitive as never);
+    pnlPluginRef.current = pnlPrimitive;
     setChartReady(true);
 
     // Drag handling
@@ -605,6 +697,12 @@ export function ChartWidget({
         candleMapRef.current = map;
         (markersPluginRef.current as OrderMarkersPrimitive | null)?.setCandleMap(map);
 
+        // Seed current price from last candle
+        if (candles.length > 0) {
+          currentPriceRef.current = candles[candles.length - 1].close;
+          pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
+        }
+
         // Sync indicators with fresh data
         syncIndicators(candles, indicators);
 
@@ -628,6 +726,9 @@ export function ChartWidget({
             };
             seriesRef.current?.update(updated);
             candleMapRef.current.set(t, { high: hi, low: lo });
+            const close = parseFloat(k.c as string);
+            currentPriceRef.current = close;
+            pnlPluginRef.current?.setCurrentPrice(close);
 
             // Update last candle in stored data and refresh indicator last point
             const data = candleDataRef.current;
@@ -733,6 +834,37 @@ export function ChartWidget({
     const plugin = markersPluginRef.current as OrderMarkersPrimitive | null;
     if (!plugin || !chartReady) return;
     plugin.setOrders(orders ?? [], showOrders ?? true);
+  }, [orders, showOrders, theme, chartReady]);
+
+  // ── PnL badges + entry price lines ───────────────────────────────────────
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series || !chartReady) return;
+
+    // Remove old entry price lines
+    pnlPriceLinesRef.current.forEach((line) => { try { series.removePriceLine(line); } catch {} });
+    pnlPriceLinesRef.current.clear();
+
+    const activeOrders = showOrders ? (orders ?? []) : [];
+
+    for (const order of activeOrders) {
+      const isBuy = order.type === "buy";
+      const color = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
+      const line = series.createPriceLine({
+        price: order.price,
+        color,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isBuy ? "Long" : "Short",
+        axisLabelColor: color,
+        axisLabelTextColor: isBuy ? css("--positive-over") : css("--negative-over"),
+      });
+      pnlPriceLinesRef.current.set(order.id, line);
+    }
+
+    pnlPluginRef.current?.setOrders(activeOrders, true);
+    if (currentPriceRef.current) pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
   }, [orders, showOrders, theme, chartReady]);
 
   // ── Click-to-place order ──────────────────────────────────────────────────
