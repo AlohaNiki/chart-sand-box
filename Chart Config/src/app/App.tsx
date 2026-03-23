@@ -175,6 +175,30 @@ const DEFAULT_HISTORY_ORDERS: TradeOrder[] = [
     transactionId: "20240314002",
     takeProfit: 68000, stopLoss: 76000,
   },
+  {
+    id: "hist-3",
+    time: 1709596800,
+    openTime:  1709596800, // Mar 5, 2024 00:00 UTC — BTC ~67 000 (before flash crash)
+    closeTime: 1709769600, // Mar 7, 2024 00:00 UTC — BTC ~63 000
+    price: 67000, closePrice: 62500,
+    type: "buy", operation: "Long",
+    leverage: 10, amount: 75, volume: 750,
+    pnl: -338, pnlPercent: -45.0,
+    transactionId: "20240305003",
+    takeProfit: 71000, stopLoss: 64000,
+  },
+  {
+    id: "hist-4",
+    time: 1710115200,
+    openTime:  1710115200, // Mar 11, 2024 00:00 UTC — BTC ~72 000
+    closeTime: 1710374400, // Mar 14, 2024 00:00 UTC — BTC ~73 800 ATH
+    price: 72000, closePrice: 73800,
+    type: "sell", operation: "Short",
+    leverage: 5, amount: 40, volume: 400,
+    pnl: -72, pnlPercent: -18.0,
+    transactionId: "20240311004",
+    takeProfit: 69000, stopLoss: 74500,
+  },
 ];
 
 const STORAGE_KEYS = {
