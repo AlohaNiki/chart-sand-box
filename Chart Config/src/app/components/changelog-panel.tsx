@@ -10,6 +10,20 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.14",
+    date: "Mar 18, 2026",
+    title: "History tab & trade chart modal",
+    items: [
+      "Sidebar now has Active / History segmented toggle",
+      "History tab shows trade cards with direction, dates and P&L",
+      "Clicking a card opens a full-screen modal: trade details on the left, chart on the right",
+      "Chart loads real Binance candles only for the trade's time range (startTime → endTime)",
+      "B/S entry and exit markers rendered on the trade chart",
+      "Interval selector in the modal: 1m / 15m / 1H / 4H / 1D / 1W / 1M",
+      "Add Position form: direction toggle, datetime pickers, entry/close price, leverage",
+    ],
+  },
+  {
     version: "0.13",
     date: "Mar 18, 2026",
     title: "KLineChart indicators",
