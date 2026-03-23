@@ -1,7 +1,7 @@
 
   # Chart Config
 
-  This is a code bundle for Chart Config. The original project is available at https://www.figma.com/design/rXS4aq1y64kVlci2Yb9HZn/Chart-Config.
+  This is a code bundle for Chart Config.
 
   ## Running the code
 
