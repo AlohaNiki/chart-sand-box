@@ -49,6 +49,11 @@ function Row({ label, value, copy }: { label: string; value: string; copy?: bool
 export function TradeChartModal({ order, onClose, theme }: Props) {
   const [visible, setVisible]   = useState(false);
   const [interval, setInterval] = useState<TradeInterval>("1H");
+  const [resolvedEntry, setResolvedEntry] = useState<number | undefined>();
+  const [resolvedExit,  setResolvedExit]  = useState<number | undefined>();
+
+  const entryPrice = resolvedEntry ?? order.price;
+  const exitPrice  = resolvedExit  ?? order.closePrice;
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
@@ -152,12 +157,12 @@ export function TradeChartModal({ order, onClose, theme }: Props) {
             )}
             <div>
               <div style={{ color: "var(--muted-foreground)", fontSize: "12px", fontFamily: "'Inter Display', sans-serif" }}>Avg. Entry Price</div>
-              <div style={{ color: "var(--foreground)", fontWeight: "500", marginTop: "2px", fontFamily: "'Inter Display', sans-serif" }}>{fmtPrice(order.price)}</div>
+              <div style={{ color: "var(--foreground)", fontWeight: "500", marginTop: "2px", fontFamily: "'Inter Display', sans-serif" }}>{fmtPrice(entryPrice)}</div>
             </div>
-            {order.closePrice !== undefined && (
+            {exitPrice !== undefined && (
               <div>
                 <div style={{ color: "var(--muted-foreground)", fontSize: "12px", fontFamily: "'Inter Display', sans-serif" }}>Est. Close Price</div>
-                <div style={{ color: "var(--foreground)", fontWeight: "500", marginTop: "2px", fontFamily: "'Inter Display', sans-serif" }}>{fmtPrice(order.closePrice)}</div>
+                <div style={{ color: "var(--foreground)", fontWeight: "500", marginTop: "2px", fontFamily: "'Inter Display', sans-serif" }}>{fmtPrice(exitPrice)}</div>
               </div>
             )}
           </div>
@@ -170,9 +175,9 @@ export function TradeChartModal({ order, onClose, theme }: Props) {
             <Row label="Operation"       value={operation} />
             <Row label="Take Profit"     value={order.takeProfit ? fmtPrice(order.takeProfit) : "—"} />
             <Row label="Stop Loss"       value={order.stopLoss   ? fmtPrice(order.stopLoss)   : "—"} />
-            <Row label="Avg. Entry Price" value={fmtPrice(order.price)} />
+            <Row label="Avg. Entry Price" value={fmtPrice(entryPrice)} />
             {order.openTime  && <Row label="Opening Time"    value={fmtDate(order.openTime)}  />}
-            {order.closePrice !== undefined && <Row label="Avg. Close Price" value={fmtPrice(order.closePrice)} />}
+            {exitPrice !== undefined && <Row label="Avg. Close Price" value={fmtPrice(exitPrice)} />}
             {order.closeTime && <Row label="Closing Time"    value={fmtDate(order.closeTime)} />}
           </div>
 
@@ -198,7 +203,8 @@ export function TradeChartModal({ order, onClose, theme }: Props) {
           <TradeChartWidget
             order={order}
             interval={interval}
-            onIntervalChange={setInterval}
+            onIntervalChange={(iv) => { setResolvedEntry(undefined); setResolvedExit(undefined); setInterval(iv); }}
+            onPricesResolved={(entry, exit) => { setResolvedEntry(entry); setResolvedExit(exit); }}
             theme={theme}
           />
         </div>

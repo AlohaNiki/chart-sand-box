@@ -239,10 +239,11 @@ interface Props {
   order: TradeOrder;
   interval: TradeInterval;
   onIntervalChange: (i: TradeInterval) => void;
+  onPricesResolved?: (entry: number, exit: number | undefined) => void;
   theme?: "dark" | "light";
 }
 
-export function TradeChartWidget({ order, interval, onIntervalChange, theme }: Props) {
+export function TradeChartWidget({ order, interval, onIntervalChange, onPricesResolved, theme }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef     = useRef<IChartApi | null>(null);
   const seriesRef    = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -341,9 +342,15 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
 
         band.set(openCt, closeCt, isLong);
 
+        // Use actual candle close prices for accuracy
+        const openCandle  = candles.find((c) => (c.time as number) === openCt);
+        const closeCandle = candles.find((c) => (c.time as number) === closeCt);
+        const actualEntry = openCandle?.close  ?? order.price;
+        const actualExit  = closeCandle?.close ?? order.closePrice;
+
         // Entry price line
         series.createPriceLine({
-          price: order.price,
+          price: actualEntry,
           color: isLong ? "#22c55e" : "#ef4444",
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
@@ -352,9 +359,9 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
         });
 
         // Exit price line
-        if (order.closePrice !== undefined) {
+        if (actualExit !== undefined) {
           series.createPriceLine({
-            price: order.closePrice,
+            price: actualExit,
             color: isLong ? "#ef4444" : "#22c55e",
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
@@ -362,6 +369,9 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
             title: "Exit",
           });
         }
+
+        // Notify parent so left panel can show consistent prices
+        onPricesResolved?.(actualEntry, actualExit);
 
         const markers: TradeMarker[] = [
           { time: openCt,  type: isLong ? "buy"  : "sell", price: order.price },
