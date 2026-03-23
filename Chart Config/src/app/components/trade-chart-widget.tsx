@@ -63,9 +63,7 @@ class TradeMarkersRenderer {
         if (cx === null) continue;
 
         const isBuy = m.type === "buy";
-        const candle = this.candleMap.get(m.time);
-        const refPrice = isBuy ? (candle?.low ?? m.price) : (candle?.high ?? m.price);
-        const cy = series.priceToCoordinate(refPrice);
+        const cy = series.priceToCoordinate(m.price);
         if (cy === null) continue;
 
         const x = cx * hpr, ry = cy * vpr;
