@@ -6,6 +6,7 @@ import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components
 import { SuperChartsWidget } from "./components/supercharts-widget";
 import { KlineChartWidget } from "./components/klinechart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
+import { TradeChartModal } from "./components/trade-chart-modal";
 import { ChangelogPanel } from "./components/changelog-panel";
 import { PriceLineEditor, ColorTokenPicker } from "./components/price-line-editor";
 import {
@@ -16,6 +17,9 @@ import {
   Sun,
   Moon,
   ScrollText,
+  TrendingUp,
+  TrendingDown,
+  ChevronRight,
 } from "lucide-react";
 
 /** Default price lines (used on first visit and on Reset) */
@@ -145,6 +149,34 @@ const DEFAULT_ORDERS: TradeOrder[] = [
   },
 ];
 
+/** Historical trades shown in the History tab (not on the main chart) */
+const DEFAULT_HISTORY_ORDERS: TradeOrder[] = [
+  {
+    id: "hist-1",
+    time: 1709884800,
+    openTime:  1709884800, // Mar 8, 2024 08:00 UTC — BTC ~69 800
+    closeTime: 1710158400, // Mar 11, 2024 12:00 UTC — BTC ~72 400
+    price: 69800, closePrice: 72400,
+    type: "buy", operation: "Long",
+    leverage: 10, amount: 100, volume: 1000,
+    pnl: 260, pnlPercent: 26.0,
+    transactionId: "20240308001",
+    takeProfit: 74000, stopLoss: 67000,
+  },
+  {
+    id: "hist-2",
+    time: 1710403200,
+    openTime:  1710403200, // Mar 14, 2024 08:00 UTC — BTC ~73 500
+    closeTime: 1710921600, // Mar 20, 2024 08:00 UTC — BTC ~68 800
+    price: 73500, closePrice: 68800,
+    type: "sell", operation: "Short",
+    leverage: 5, amount: 50, volume: 500,
+    pnl: 160, pnlPercent: 32.0,
+    transactionId: "20240314002",
+    takeProfit: 68000, stopLoss: 76000,
+  },
+];
+
 const STORAGE_KEYS = {
   theme: "chartConfig_theme",
   priceLines: "chartConfig_priceLines",
@@ -245,6 +277,49 @@ export default function App() {
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
   const [chartMode, setChartMode] = useState<"lightweight" | "supercharts" | "klinechart">("lightweight");
+
+  // ── History tab ───────────────────────────────────────────────────────────
+  const [sidebarMode, setSidebarMode] = useState<"active" | "history">("active");
+  const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(DEFAULT_HISTORY_ORDERS);
+  const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<TradeOrder | null>(null);
+  const [showAddPosition, setShowAddPosition] = useState(false);
+
+  // Add position form state
+  const [addType, setAddType] = useState<"buy" | "sell">("buy");
+  const [addOpenTime, setAddOpenTime]   = useState("");
+  const [addCloseTime, setAddCloseTime] = useState("");
+  const [addEntryPrice, setAddEntryPrice]   = useState("");
+  const [addClosePrice, setAddClosePrice]   = useState("");
+  const [addLeverage, setAddLeverage]   = useState("");
+
+  const handleAddPosition = () => {
+    if (!addOpenTime || !addEntryPrice) return;
+    const openTs  = Math.floor(new Date(addOpenTime).getTime()  / 1000);
+    const closeTs = addCloseTime ? Math.floor(new Date(addCloseTime).getTime() / 1000) : undefined;
+    const entry   = parseFloat(addEntryPrice);
+    const close   = addClosePrice ? parseFloat(addClosePrice) : undefined;
+    const lev     = addLeverage ? parseInt(addLeverage) : undefined;
+    const isLong  = addType === "buy";
+    const pnl     = close !== undefined ? Math.round((isLong ? close - entry : entry - close) * 100) / 100 : undefined;
+    const pnlPct  = pnl !== undefined ? Math.round((pnl / entry) * (lev ?? 1) * 10000) / 100 : undefined;
+
+    const newOrder: TradeOrder = {
+      id: `hist-${Date.now()}`,
+      time: openTs,
+      openTime: openTs,
+      closeTime: closeTs,
+      price: entry,
+      closePrice: close,
+      type: addType,
+      operation: isLong ? "Long" : "Short",
+      leverage: lev,
+      pnl,
+      pnlPercent: pnlPct,
+    };
+    setHistoryOrders((prev) => [newOrder, ...prev]);
+    setShowAddPosition(false);
+    setAddOpenTime(""); setAddCloseTime(""); setAddEntryPrice(""); setAddClosePrice(""); setAddLeverage("");
+  };
 
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
   useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
@@ -561,6 +636,99 @@ export default function App() {
                 </div>
               ) : (
               <div className="p-[16px] flex flex-col gap-[12px]">
+                {/* Active / History toggle */}
+                <div
+                  className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px] shrink-0"
+                  style={{ background: "var(--secondary)" }}
+                >
+                  {(["active", "history"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setSidebarMode(mode)}
+                      className="flex-1 py-[4px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+                      style={{
+                        fontFamily: "'Inter Display', sans-serif",
+                        fontSize: "var(--text-label)",
+                        background: sidebarMode === mode ? "var(--card)" : "transparent",
+                        color: sidebarMode === mode ? "var(--foreground)" : "var(--muted-foreground)",
+                        fontWeight: sidebarMode === mode ? "600" : "400",
+                      }}
+                    >
+                      {mode === "active" ? "Active" : "History"}
+                    </button>
+                  ))}
+                </div>
+
+                {sidebarMode === "history" ? (
+                  /* ── History tab ───────────────────────────────────────── */
+                  <div className="flex flex-col gap-[10px]">
+                    <button
+                      onClick={() => setShowAddPosition(true)}
+                      className="flex items-center justify-center gap-[6px] px-[12px] py-[9px] rounded-[var(--radius)] border border-dashed border-border hover:bg-secondary transition-colors cursor-pointer"
+                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                    >
+                      <Plus size={14} />
+                      Add Position
+                    </button>
+
+                    {historyOrders.map((order) => {
+                      const isBuy    = order.type === "buy";
+                      const isProfit = (order.pnl ?? 0) >= 0;
+                      const op       = order.operation ?? (isBuy ? "Long" : "Short");
+                      return (
+                        <button
+                          key={order.id}
+                          onClick={() => setSelectedHistoryOrder(order)}
+                          className="w-full flex items-center gap-[10px] px-[12px] py-[10px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer text-left"
+                          style={{ background: "var(--card)" }}
+                        >
+                          {/* Direction icon */}
+                          <div
+                            className="w-[28px] h-[28px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+                            style={{ background: isBuy ? "var(--positive-bg-default)" : "var(--negative-bg-default)" }}
+                          >
+                            {isBuy
+                              ? <TrendingUp  size={13} color="var(--positive-over)" />
+                              : <TrendingDown size={13} color="var(--negative-over)" />
+                            }
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-[6px]">
+                              <span style={{ color: "var(--foreground)", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter Display', sans-serif" }}>
+                                {op}{order.leverage ? ` ×${order.leverage}` : ""}
+                              </span>
+                              {order.pnl !== undefined && (
+                                <span style={{ color: isProfit ? "var(--positive-bg-default)" : "var(--negative-bg-default)", fontSize: "12px", fontWeight: "500", fontFamily: "'Inter Display', sans-serif" }}>
+                                  {isProfit ? "+" : ""}{order.pnl.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ color: "var(--muted-foreground)", fontSize: "11px", fontFamily: "'Inter Display', sans-serif", marginTop: "2px" }}>
+                              {order.openTime
+                                ? new Date(order.openTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                : "—"}
+                              {order.closeTime
+                                ? ` → ${new Date(order.closeTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                                : ""}
+                            </div>
+                          </div>
+
+                          <ChevronRight size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                        </button>
+                      );
+                    })}
+
+                    {historyOrders.length === 0 && (
+                      <p style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", textAlign: "center", padding: "24px 0" }}>
+                        No history yet. Add a position to get started.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                /* ── Active tab ─────────────────────────────────────────── */
+                <>
                 {/* Chart Settings */}
                 <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
                   Chart
@@ -752,6 +920,8 @@ export default function App() {
                   <Plus size={16} style={{ color: "var(--muted-foreground)" }} />
                   Add Custom Level
                 </button>
+                </>
+                )}
               </div>
               )}
             </aside>
@@ -760,9 +930,94 @@ export default function App() {
       {selectedOrder && (
         <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
       )}
+      {selectedHistoryOrder && (
+        <TradeChartModal
+          order={selectedHistoryOrder}
+          onClose={() => setSelectedHistoryOrder(null)}
+          theme={theme}
+        />
+      )}
       {showChangelog && (
         <ChangelogPanel onClose={() => setShowChangelog(false)} />
       )}
+
+      {/* ── Add Position modal ─────────────────────────────────────────────── */}
+      {showAddPosition && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-[24px]"
+          onClick={() => setShowAddPosition(false)}
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
+          <div
+            className="relative flex flex-col gap-[16px] rounded-[var(--radius-card)] overflow-hidden shadow-xl p-[24px]"
+            style={{ background: "var(--surface-elevation-1)", border: "1px solid var(--border)", width: "min(400px, 100%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Add Position</h4>
+              <button onClick={() => setShowAddPosition(false)} className="cursor-pointer opacity-50 hover:opacity-100 transition-opacity" style={{ color: "var(--foreground)" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Direction toggle */}
+            <div className="flex gap-[8px]">
+              {(["buy", "sell"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setAddType(t)}
+                  className="flex-1 py-[7px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
+                  style={{
+                    fontFamily: "'Inter Display', sans-serif", fontSize: "13px", fontWeight: "600",
+                    borderColor: t === "buy" ? "var(--positive-bg-default)" : "var(--negative-bg-default)",
+                    background: addType === t ? (t === "buy" ? "var(--positive-bg-default)" : "var(--negative-bg-default)") : "transparent",
+                    color: addType === t ? (t === "buy" ? "var(--positive-over)" : "var(--negative-over)") : (t === "buy" ? "var(--positive-bg-default)" : "var(--negative-bg-default)"),
+                  }}
+                >
+                  {t === "buy" ? "Long" : "Short"}
+                </button>
+              ))}
+            </div>
+
+            {/* Fields */}
+            {[
+              { label: "Entry time",   value: addOpenTime,    setter: setAddOpenTime,    type: "datetime-local", required: true },
+              { label: "Close time",   value: addCloseTime,   setter: setAddCloseTime,   type: "datetime-local", required: false },
+              { label: "Entry price",  value: addEntryPrice,  setter: setAddEntryPrice,  type: "number",         required: true },
+              { label: "Close price",  value: addClosePrice,  setter: setAddClosePrice,  type: "number",         required: false },
+              { label: "Leverage (×)", value: addLeverage,    setter: setAddLeverage,    type: "number",         required: false },
+            ].map(({ label, value, setter, type, required }) => (
+              <div key={label} className="flex flex-col gap-[4px]">
+                <span style={{ color: "var(--muted-foreground)", fontSize: "12px", fontFamily: "'Inter Display', sans-serif" }}>
+                  {label}{required && <span style={{ color: "var(--negative-bg-default)" }}> *</span>}
+                </span>
+                <input
+                  type={type}
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  className="w-full px-[10px] py-[7px] rounded-[var(--radius-sm)] border border-border outline-none"
+                  style={{ background: "var(--secondary)", color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "13px", colorScheme: "dark" }}
+                  step={type === "number" ? "any" : undefined}
+                />
+              </div>
+            ))}
+
+            <button
+              onClick={handleAddPosition}
+              disabled={!addOpenTime || !addEntryPrice}
+              className="w-full py-[9px] rounded-[var(--radius)] transition-colors cursor-pointer"
+              style={{
+                background: "var(--accent-text-and-icons)", color: "#fff",
+                fontFamily: "'Inter Display', sans-serif", fontSize: "13px", fontWeight: "600",
+                opacity: (!addOpenTime || !addEntryPrice) ? 0.4 : 1,
+              }}
+            >
+              Add Position
+            </button>
+          </div>
+        </div>
+      )}
+
       <SpeedInsights />
     </DndProvider>
   );
