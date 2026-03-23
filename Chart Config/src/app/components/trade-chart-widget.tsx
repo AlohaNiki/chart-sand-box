@@ -131,6 +131,69 @@ class TradeMarkersPrimitive {
   }
 }
 
+// ── Trade zone primitive (semi-transparent band between open and close) ───────
+
+class TradeBandRenderer {
+  openTime: number | null = null;
+  closeTime: number | null = null;
+  isLong = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chart: any = null;
+
+  draw(target: CanvasRenderingTarget2D): void {
+    const { chart, openTime, closeTime } = this;
+    if (!chart || openTime === null || closeTime === null) return;
+
+    target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, bitmapSize }) => {
+      const openX  = chart.timeScale().timeToCoordinate(openTime  as Time);
+      const closeX = chart.timeScale().timeToCoordinate(closeTime as Time);
+      if (openX === null || closeX === null) return;
+
+      const x1 = Math.min(openX, closeX) * hpr;
+      const x2 = Math.max(openX, closeX) * hpr;
+      const h  = bitmapSize.height;
+
+      const fillColor = this.isLong ? "rgba(34,197,94,0.07)" : "rgba(239,68,68,0.07)";
+      const lineColor = this.isLong ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)";
+
+      // Zone fill
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(x1, 0, x2 - x1, h);
+
+      // Vertical dashed lines at open & close
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 1 * hpr;
+      ctx.setLineDash([4 * hpr, 4 * hpr]);
+      for (const px of [openX * hpr, closeX * hpr]) {
+        ctx.beginPath();
+        ctx.moveTo(px, 0);
+        ctx.lineTo(px, h);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    });
+  }
+}
+
+class TradeBandPrimitive {
+  private _renderer = new TradeBandRenderer();
+  private _views = [{ renderer: () => this._renderer, zOrder: () => "bottom" as const }];
+  private _requestUpdate?: () => void;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attached(param: any) { this._renderer.chart = param.chart; this._requestUpdate = param.requestUpdate; }
+  detached()           { this._renderer.chart = null; this._requestUpdate = undefined; }
+  updateAllViews()     {}
+  paneViews()          { return this._views; }
+
+  set(openTime: number, closeTime: number, isLong: boolean) {
+    this._renderer.openTime  = openTime;
+    this._renderer.closeTime = closeTime;
+    this._renderer.isLong    = isLong;
+    this._requestUpdate?.();
+  }
+}
+
 // ── Binance fetcher for a specific time range ─────────────────────────────────
 
 async function fetchRangeKlines(
@@ -241,8 +304,13 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
       upColor: "#22c55e", downColor: "#ef4444",
       borderUpColor: "#22c55e", borderDownColor: "#ef4444",
       wickUpColor: "#22c55e", wickDownColor: "#ef4444",
+      lastValueVisible: false,
+      priceLineVisible: false,
     });
     seriesRef.current = series;
+
+    const band = new TradeBandPrimitive();
+    series.attachPrimitive(band as never);
 
     const primitive = new TradeMarkersPrimitive();
     series.attachPrimitive(primitive as never);
@@ -269,6 +337,8 @@ export function TradeChartWidget({ order, interval, onIntervalChange, theme }: P
         const openCt  = nearestCandleTime(candles, Math.floor(openMs  / 1000));
         const closeCt = nearestCandleTime(candles, Math.floor(closeMs / 1000));
         const isLong  = order.type === "buy";
+
+        band.set(openCt, closeCt, isLong);
 
         const markers: TradeMarker[] = [
           { time: openCt,  type: isLong ? "buy"  : "sell", price: order.price },
