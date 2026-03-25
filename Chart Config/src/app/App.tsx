@@ -26,11 +26,11 @@ import {
 /** Default price lines (used on first visit and on Reset) */
 const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
   { id: "custom-1", label: "Liq. Price", price: 61502.53, color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",                lineWidth: 1,   lineStyle: 0, visible: true, showPnl: false },
-  { id: "custom-2", label: "TP",         price: 98324.98, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over",               lineWidth: 0.5, lineStyle: 3, visible: true },
-  { id: "custom-3", label: "SL",         price: 94597.55, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over",               lineWidth: 0.5, lineStyle: 3, visible: true },
-  { id: "custom-4", label: "AO",         price: 90553,    color: "--contrast-secondary",  labelColor: "--surface-elevation-3", labelTextColor: "--contrast-primary",            lineWidth: 0.5, lineStyle: 4, visible: true },
-  { id: "custom-5", label: "Open Long",  price: 86895.97, color: "--positive-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--positive-text-and-icons",     lineWidth: 0.5, lineStyle: 4, visible: true },
-  { id: "custom-6", label: "Open Short", price: 82524.48, color: "--negative-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--negative-text-and-icons",     lineWidth: 0.5, lineStyle: 4, visible: true },
+  { id: "custom-2", label: "TP",         price: 98324.98, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over",               lineWidth: 1,   lineStyle: 3, visible: true },
+  { id: "custom-3", label: "SL",         price: 94597.55, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over",               lineWidth: 1,   lineStyle: 3, visible: true },
+  { id: "custom-4", label: "AO",         price: 90553,    color: "--contrast-secondary",  labelColor: "--surface-elevation-3", labelTextColor: "--contrast-primary",            lineWidth: 1,   lineStyle: 2, visible: true },
+  { id: "custom-5", label: "Open Long",  price: 86895.97, color: "--positive-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--positive-text-and-icons",     lineWidth: 1,   lineStyle: 2, visible: true },
+  { id: "custom-6", label: "Open Short", price: 82524.48, color: "--negative-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--negative-text-and-icons",     lineWidth: 1,   lineStyle: 2, visible: true },
   { id: "custom-7", label: "Entry",      price: 78501.54, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
   { id: "custom-8", label: "Close",      price: 74937.98, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
 ];
