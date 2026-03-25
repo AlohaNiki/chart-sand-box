@@ -5,6 +5,7 @@ import type { CanvasRenderingTarget2D } from "fancy-canvas";
 import {
   createChart,
   ColorType,
+  CrosshairMode,
   CandlestickSeries,
   LineSeries,
   LineStyle,
@@ -394,6 +395,19 @@ const INDICATOR_DEFS = [
   { key: "rsi"   as const, label: "RSI 14", color: "#3B82F6" },
 ];
 
+export interface CurrentPriceLineConfig {
+  visible: boolean;
+  color: string;
+  lineWidth: number;
+  lineStyle: number;
+}
+
+export interface CrosshairConfig {
+  mode: number; // 0 = Normal, 1 = Magnet
+  hStyle: number;
+  vStyle: number;
+}
+
 interface ChartWidgetProps {
   priceLines: PriceLineConfig[];
   onPriceLineDrag?: (id: string, newPrice: number) => void;
@@ -408,6 +422,8 @@ interface ChartWidgetProps {
   onOrderClick?: (order: TradeOrder) => void;
   onOrderPriceChange?: (id: string, newPrice: number) => void;
   onLivePrice?: (price: number) => void;
+  currentPriceLineConfig?: CurrentPriceLineConfig;
+  crosshairConfig?: CrosshairConfig;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -427,7 +443,7 @@ function rgba(rgbVar: string, alpha: number): string {
 export function ChartWidget({
   priceLines, onPriceLineDrag, theme, chartBg, gridColor,
   orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick, onOrderPriceChange,
-  onLivePrice,
+  onLivePrice, currentPriceLineConfig, crosshairConfig,
 }: ChartWidgetProps) {
   const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -854,10 +870,6 @@ export function ChartWidget({
         background: { type: ColorType.Solid, color: resolveColor(chartBg ?? "--surface-canvas") },
       },
       grid: { vertLines: { color: resolvedGrid }, horzLines: { color: resolvedGrid } },
-      crosshair: {
-        vertLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
-        horzLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
-      },
       rightPriceScale: { borderColor: css("--border") },
       timeScale: { borderColor: css("--border") },
     });
@@ -870,6 +882,34 @@ export function ChartWidget({
       wickDownColor: rgba("--negative-bg-default-rgb", 0.6),
     });
   }, [theme, chartBg, gridColor]);
+
+  // ── Current price line ────────────────────────────────────────────────────
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series || !chartReady) return;
+    const cfg = currentPriceLineConfig;
+    series.applyOptions({
+      priceLineVisible: cfg?.visible ?? true,
+      priceLineColor: cfg ? resolveColor(cfg.color) : css("--accent-bg-default"),
+      priceLineWidth: (cfg?.lineWidth ?? 1) as 1 | 2 | 3 | 4,
+      priceLineStyle: cfg?.lineStyle ?? LineStyle.Dashed,
+    });
+  }, [currentPriceLineConfig, chartReady, theme]);
+
+  // ── Crosshair ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !chartReady) return;
+    const accent = rgba("--accent-bg-default-rgb", 0.4);
+    const accentBg = css("--accent-bg-default");
+    chart.applyOptions({
+      crosshair: {
+        mode: crosshairConfig?.mode === 1 ? CrosshairMode.Magnet : CrosshairMode.Normal,
+        vertLine: { color: accent, labelBackgroundColor: accentBg, style: crosshairConfig?.vStyle ?? LineStyle.Solid },
+        horzLine: { color: accent, labelBackgroundColor: accentBg, style: crosshairConfig?.hStyle ?? LineStyle.Solid },
+      },
+    });
+  }, [crosshairConfig, chartReady, theme]);
 
   // ── Sync price lines ──────────────────────────────────────────────────────
   useEffect(() => {

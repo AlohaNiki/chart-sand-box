@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
+import { ChartWidget, type PriceLineConfig, type TradeOrder, type CurrentPriceLineConfig, type CrosshairConfig } from "./components/chart-widget";
 
 import { KlineChartWidget } from "./components/klinechart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
@@ -302,7 +302,18 @@ export default function App() {
   const [chartMode, setChartMode] = useState<"lightweight" | "klinechart">("lightweight");
 
   // ── History tab ───────────────────────────────────────────────────────────
-  const [sidebarMode, setSidebarMode] = useState<"active" | "history">("active");
+  const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">("orders");
+  const [currentPriceLineConfig, setCurrentPriceLineConfig] = useState<CurrentPriceLineConfig>({
+    visible: true,
+    color: "--accent-bg-default",
+    lineWidth: 1,
+    lineStyle: 2,
+  });
+  const [crosshairConfig, setCrosshairConfig] = useState<CrosshairConfig>({
+    mode: 0,
+    hStyle: 0,
+    vStyle: 0,
+  });
   const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(DEFAULT_HISTORY_ORDERS);
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<TradeOrder | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
@@ -518,7 +529,14 @@ export default function App() {
   };
 
   // ── Price lines shown on chart depend on active sidebar tab ───────────────
-  const effectivePriceLines = sidebarMode === "history" ? [] : priceLines;
+  const effectivePriceLines = sidebarTab === "history" ? [] : priceLines;
+  const LINE_STYLE_SVG = [
+    { value: 0, label: "Solid",  dash: undefined as string | undefined },
+    { value: 1, label: "Dot",    dash: "2,2" },
+    { value: 2, label: "Dash",   dash: "5,3" },
+    { value: 3, label: "Large",  dash: "7,3" },
+    { value: 4, label: "Sparse", dash: "2,6" },
+  ];
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -620,18 +638,20 @@ export default function App() {
               {chartMode === "lightweight" ? (
                 <ChartWidget
                   priceLines={effectivePriceLines}
-                  onPriceLineDrag={sidebarMode === "active" ? handleChartDrag : undefined}
+                  onPriceLineDrag={sidebarTab !== "history" ? handleChartDrag : undefined}
                   theme={theme}
                   chartBg={chartBg}
                   gridColor={gridColor}
                   orders={orders}
                   showOrders={showOrders}
-                  pendingOrderType={sidebarMode === "active" ? pendingOrderType : null}
+                  pendingOrderType={sidebarTab === "history" ? pendingOrderType : null}
                   onOrderPlace={handleOrderPlace}
                   onCancelPending={() => setPendingOrderType(null)}
                   onOrderClick={setSelectedOrder}
                   onOrderPriceChange={handleOrderPriceChange}
                   onLivePrice={(p) => { livePriceRef.current = p; }}
+                  currentPriceLineConfig={currentPriceLineConfig}
+                  crosshairConfig={crosshairConfig}
                 />
               ) : (
                 <KlineChartWidget
@@ -656,64 +676,254 @@ export default function App() {
               style={{ background: "var(--sidebar)" }}
             >
               <div className="p-[16px] flex flex-col gap-[12px]">
-                {/* Active / History toggle */}
+
+                {/* ── Tab toggle ─────────────────────────────────────────── */}
                 <div
                   className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px] shrink-0"
                   style={{ background: "var(--secondary)" }}
                 >
-                  {(["active", "history"] as const).map((mode) => (
+                  {(["chart", "orders", "history"] as const).map((tab) => (
                     <button
-                      key={mode}
-                      onClick={() => setSidebarMode(mode)}
-                      className="flex-1 py-[4px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+                      key={tab}
+                      onClick={() => setSidebarTab(tab)}
+                      className="flex-1 py-[4px] rounded-[var(--radius-sm)] transition-colors cursor-pointer capitalize"
                       style={{
                         fontFamily: "'Inter Display', sans-serif",
                         fontSize: "var(--text-label)",
-                        background: sidebarMode === mode ? "var(--card)" : "transparent",
-                        color: sidebarMode === mode ? "var(--foreground)" : "var(--muted-foreground)",
-                        fontWeight: sidebarMode === mode ? "600" : "400",
+                        background: sidebarTab === tab ? "var(--card)" : "transparent",
+                        color: sidebarTab === tab ? "var(--foreground)" : "var(--muted-foreground)",
+                        fontWeight: sidebarTab === tab ? "600" : "400",
                       }}
                     >
-                      {mode === "active" ? "Active" : "History"}
+                      {tab === "orders" ? "Orders" : tab === "chart" ? "Chart" : "History"}
                     </button>
                   ))}
                 </div>
 
-                {sidebarMode === "history" ? (
-                  /* ── History tab ───────────────────────────────────────── */
-                  <div className="flex flex-col gap-[10px]">
+                {/* ── CHART TAB ──────────────────────────────────────────── */}
+                {sidebarTab === "chart" && (
+                  <>
+                  {/* Background + Grid */}
+                  <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Chart</h4>
+                  <div className="flex flex-col gap-[8px]">
+                    <div className="flex flex-col gap-[4px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Background</span>
+                      <ColorTokenPicker value={chartBg} onChange={setChartBg} />
+                    </div>
+                    <div className="flex flex-col gap-[4px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Grid</span>
+                      <ColorTokenPicker value={gridColor} onChange={setGridColor} />
+                    </div>
+                  </div>
+
+                  <div className="h-px" style={{ background: "var(--border)" }} />
+
+                  {/* Current Price Line */}
+                  <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Current Price Line</h4>
+                  <div className="flex flex-col gap-[8px]">
+                    {/* Visible */}
+                    <label className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      <input type="checkbox" checked={currentPriceLineConfig.visible} onChange={(e) => setCurrentPriceLineConfig(c => ({ ...c, visible: e.target.checked }))} className="cursor-pointer" />
+                      Visible
+                    </label>
+                    {/* Color */}
+                    <ColorTokenPicker label="Color" value={currentPriceLineConfig.color} onChange={(c) => setCurrentPriceLineConfig(cfg => ({ ...cfg, color: c }))} />
+                    {/* Style */}
+                    <div className="flex flex-col gap-[6px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Style</span>
+                      <div className="flex gap-[4px]">
+                        {LINE_STYLE_SVG.map((s) => {
+                          const active = currentPriceLineConfig.lineStyle === s.value;
+                          return (
+                            <button key={s.value} onClick={() => setCurrentPriceLineConfig(c => ({ ...c, lineStyle: s.value }))} title={s.label}
+                              className="flex-1 flex flex-col items-center gap-[4px] py-[6px] px-[2px] rounded cursor-pointer transition-colors"
+                              style={{ background: active ? "var(--secondary)" : "transparent", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}` }}>
+                              <svg width="28" height="8" viewBox="0 0 28 8"><line x1="2" y1="4" x2="26" y2="4" stroke={active ? "var(--foreground)" : "var(--muted-foreground)"} strokeWidth="1.5" strokeDasharray={s.dash} strokeLinecap="round" /></svg>
+                              <span style={{ fontSize: "9px", color: active ? "var(--foreground)" : "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif" }}>{s.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Width */}
+                    <div className="flex items-center gap-[8px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", width: 40, flexShrink: 0 }}>Width</span>
+                      <input type="range" min={0} max={3} step={1}
+                        value={[0.5,1,1.5,2].indexOf(currentPriceLineConfig.lineWidth) === -1 ? 1 : [0.5,1,1.5,2].indexOf(currentPriceLineConfig.lineWidth)}
+                        onChange={(e) => setCurrentPriceLineConfig(c => ({ ...c, lineWidth: [0.5,1,1.5,2][parseInt(e.target.value)] }))}
+                        className="flex-1 cursor-pointer" />
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", width: 32, textAlign: "right", flexShrink: 0 }}>{currentPriceLineConfig.lineWidth}px</span>
+                    </div>
+                  </div>
+
+                  <div className="h-px" style={{ background: "var(--border)" }} />
+
+                  {/* Crosshair */}
+                  <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Crosshair</h4>
+                  <div className="flex flex-col gap-[8px]">
+                    {/* Mode */}
+                    <div className="flex flex-col gap-[6px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Mode</span>
+                      <div className="flex gap-[4px] rounded-[var(--radius-sm)] p-[2px]" style={{ background: "var(--secondary)" }}>
+                        {([{ v: 0, label: "Normal" }, { v: 1, label: "Magnet" }] as const).map(({ v, label }) => (
+                          <button key={v} onClick={() => setCrosshairConfig(c => ({ ...c, mode: v }))}
+                            className="flex-1 py-[4px] px-[8px] rounded-[var(--radius-sm)] transition-colors cursor-pointer"
+                            style={{ fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", background: crosshairConfig.mode === v ? "var(--card)" : "transparent", color: crosshairConfig.mode === v ? "var(--foreground)" : "var(--muted-foreground)", fontWeight: crosshairConfig.mode === v ? "600" : "400" }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* H-line style */}
+                    <div className="flex flex-col gap-[6px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Horizontal Line</span>
+                      <div className="flex gap-[4px]">
+                        {LINE_STYLE_SVG.map((s) => {
+                          const active = crosshairConfig.hStyle === s.value;
+                          return (
+                            <button key={s.value} onClick={() => setCrosshairConfig(c => ({ ...c, hStyle: s.value }))} title={s.label}
+                              className="flex-1 flex flex-col items-center gap-[4px] py-[6px] px-[2px] rounded cursor-pointer transition-colors"
+                              style={{ background: active ? "var(--secondary)" : "transparent", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}` }}>
+                              <svg width="28" height="8" viewBox="0 0 28 8"><line x1="2" y1="4" x2="26" y2="4" stroke={active ? "var(--foreground)" : "var(--muted-foreground)"} strokeWidth="1.5" strokeDasharray={s.dash} strokeLinecap="round" /></svg>
+                              <span style={{ fontSize: "9px", color: active ? "var(--foreground)" : "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif" }}>{s.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* V-line style */}
+                    <div className="flex flex-col gap-[6px]">
+                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Vertical Line</span>
+                      <div className="flex gap-[4px]">
+                        {LINE_STYLE_SVG.map((s) => {
+                          const active = crosshairConfig.vStyle === s.value;
+                          return (
+                            <button key={s.value} onClick={() => setCrosshairConfig(c => ({ ...c, vStyle: s.value }))} title={s.label}
+                              className="flex-1 flex flex-col items-center gap-[4px] py-[6px] px-[2px] rounded cursor-pointer transition-colors"
+                              style={{ background: active ? "var(--secondary)" : "transparent", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}` }}>
+                              <svg width="28" height="8" viewBox="0 0 28 8"><line x1="2" y1="4" x2="26" y2="4" stroke={active ? "var(--foreground)" : "var(--muted-foreground)"} strokeWidth="1.5" strokeDasharray={s.dash} strokeLinecap="round" /></svg>
+                              <span style={{ fontSize: "9px", color: active ? "var(--foreground)" : "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif" }}>{s.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  </>
+                )}
+
+                {/* ── ORDERS TAB ─────────────────────────────────────────── */}
+                {sidebarTab === "orders" && (
+                  <>
+                  {/* Panel header */}
+                  <div className="flex items-center justify-between">
+                    <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Price Lines</h4>
+                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      {priceLines.filter((p) => p.visible).length}/{priceLines.length} visible
+                    </span>
+                  </div>
+
+                  {/* Export / Import / Clear bar */}
+                  <div className="flex items-center gap-[8px]">
+                    <button onClick={handleExport}
+                      className="flex-1 flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+                      style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                      title="Export price lines as JSON">
+                      <Upload size={13} style={{ color: "var(--muted-foreground)" }} />Export
+                    </button>
+                    <label
+                      className="flex-1 flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+                      style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                      title="Import price lines from JSON">
+                      <Download size={13} style={{ color: "var(--muted-foreground)" }} />Import
+                      <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleImport} className="hidden" />
+                    </label>
                     <button
-                      onClick={() => setShowAddPosition(true)}
+                      onClick={() => { if (window.confirm("Delete all price lines and active orders? This cannot be undone.")) { setPriceLines([]); setOrders([]); } }}
+                      className="flex items-center justify-center w-[32px] h-[32px] shrink-0 rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+                      title="Delete all price lines">
+                      <Trash2 size={13} style={{ color: "var(--muted-foreground)" }} />
+                    </button>
+                  </div>
+
+                  {/* Import toast */}
+                  {importMessage && (
+                    <div className="px-[10px] py-[6px] rounded-[var(--radius-sm)] text-center"
+                      style={{ background: importMessage.type === "success" ? "var(--success)" : "var(--destructive)", color: importMessage.type === "success" ? "var(--success-foreground)" : "var(--destructive-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      {importMessage.text}
+                    </div>
+                  )}
+
+                  {/* Draggable list */}
+                  {priceLines.map((config, index) => (
+                    <PriceLineEditor key={config.id} index={index} config={config} onChange={handleLineChange} onDelete={handleDeleteLine} onDuplicate={handleDuplicateLine} onMove={handleMoveLine} canDelete={true} />
+                  ))}
+
+                  {/* Add Level button */}
+                  <button onClick={handleAddLevel}
+                    className="flex items-center justify-center gap-[6px] px-[12px] py-[10px] rounded-[var(--radius)] border border-dashed border-border hover:bg-secondary transition-colors cursor-pointer"
+                    style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-base)" }}>
+                    <Plus size={16} style={{ color: "var(--muted-foreground)" }} />
+                    Add Custom Level
+                  </button>
+                  </>
+                )}
+
+                {/* ── HISTORY TAB ────────────────────────────────────────── */}
+                {sidebarTab === "history" && (
+                  <div className="flex flex-col gap-[10px]">
+                    {/* History Markers toggle + add buttons */}
+                    <div className="flex flex-col gap-[8px]">
+                      <label className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                        <input type="checkbox" checked={showOrders} onChange={(e) => setShowOrders(e.target.checked)} className="cursor-pointer" />
+                        History Markers
+                      </label>
+                      {showOrders && (
+                        <div className="flex items-center gap-[6px]">
+                          <button onClick={() => setPendingOrderType(pendingOrderType === "buy" ? null : "buy")}
+                            className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
+                            style={{ borderColor: "var(--positive-bg-default)", background: pendingOrderType === "buy" ? "var(--positive-bg-default)" : "transparent", color: pendingOrderType === "buy" ? "var(--positive-over)" : "var(--positive-bg-default)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", fontWeight: "600" }}>
+                            + Buy
+                          </button>
+                          <button onClick={() => setPendingOrderType(pendingOrderType === "sell" ? null : "sell")}
+                            className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
+                            style={{ borderColor: "var(--negative-bg-default)", background: pendingOrderType === "sell" ? "var(--negative-bg-default)" : "transparent", color: pendingOrderType === "sell" ? "var(--negative-over)" : "var(--negative-bg-default)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", fontWeight: "600" }}>
+                            + Sell
+                          </button>
+                          {orders.length > 0 && (
+                            <button onClick={() => setOrders([])}
+                              className="px-[8px] py-[5px] rounded-[var(--radius-sm)] border border-border transition-colors cursor-pointer"
+                              style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                              title="Clear all orders">
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="h-px" style={{ background: "var(--border)" }} />
+
+                    {/* Add Position */}
+                    <button onClick={() => setShowAddPosition(true)}
                       className="flex items-center justify-center gap-[6px] px-[12px] py-[9px] rounded-[var(--radius)] border border-dashed border-border hover:bg-secondary transition-colors cursor-pointer"
-                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
-                    >
-                      <Plus size={14} />
-                      Add Position
+                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      <Plus size={14} />Add Position
                     </button>
 
+                    {/* History orders list */}
                     {historyOrders.map((order) => {
                       const isBuy    = order.type === "buy";
                       const isProfit = (order.pnl ?? 0) >= 0;
                       const op       = order.operation ?? (isBuy ? "Long" : "Short");
                       return (
-                        <button
-                          key={order.id}
-                          onClick={() => setSelectedHistoryOrder(order)}
+                        <button key={order.id} onClick={() => setSelectedHistoryOrder(order)}
                           className="w-full flex items-center gap-[10px] px-[12px] py-[10px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer text-left"
-                          style={{ background: "var(--card)" }}
-                        >
-                          {/* Direction icon */}
-                          <div
-                            className="w-[28px] h-[28px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
-                            style={{ background: isBuy ? "var(--positive-bg-default)" : "var(--negative-bg-default)" }}
-                          >
-                            {isBuy
-                              ? <TrendingUp  size={13} color="var(--positive-over)" />
-                              : <TrendingDown size={13} color="var(--negative-over)" />
-                            }
+                          style={{ background: "var(--card)" }}>
+                          <div className="w-[28px] h-[28px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+                            style={{ background: isBuy ? "var(--positive-bg-default)" : "var(--negative-bg-default)" }}>
+                            {isBuy ? <TrendingUp size={13} color="var(--positive-over)" /> : <TrendingDown size={13} color="var(--negative-over)" />}
                           </div>
-
-                          {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-[6px]">
                               <span style={{ color: "var(--foreground)", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter Display', sans-serif" }}>
@@ -726,15 +936,10 @@ export default function App() {
                               )}
                             </div>
                             <div style={{ color: "var(--muted-foreground)", fontSize: "11px", fontFamily: "'Inter Display', sans-serif", marginTop: "2px" }}>
-                              {order.openTime
-                                ? new Date(order.openTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                                : "—"}
-                              {order.closeTime
-                                ? ` → ${new Date(order.closeTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                                : ""}
+                              {order.openTime ? new Date(order.openTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                              {order.closeTime ? ` → ${new Date(order.closeTime * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
                             </div>
                           </div>
-
                           <ChevronRight size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
                         </button>
                       );
@@ -746,214 +951,8 @@ export default function App() {
                       </p>
                     )}
                   </div>
-                ) : (
-                /* ── Active tab ─────────────────────────────────────────── */
-                <>
-                {/* Chart Settings */}
-                <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
-                  Chart
-                </h4>
-                <div className="flex flex-col gap-[8px]">
-                  <div className="flex flex-col gap-[4px]">
-                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
-                      Background
-                    </span>
-                    <ColorTokenPicker value={chartBg} onChange={setChartBg} />
-                  </div>
-                  <div className="flex flex-col gap-[4px]">
-                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
-                      Grid
-                    </span>
-                    <ColorTokenPicker value={gridColor} onChange={setGridColor} />
-                  </div>
-
-                  {/* Show history orders toggle + add buttons */}
-                  <div className="flex items-center justify-between">
-                    <label
-                      className="flex items-center gap-[8px] cursor-pointer"
-                      style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={showOrders}
-                        onChange={(e) => setShowOrders(e.target.checked)}
-                        className="cursor-pointer"
-                      />
-                      History Markers
-                    </label>
-                  </div>
-
-                  {showOrders && (
-                    <div className="flex items-center gap-[6px]">
-                      <button
-                        onClick={() => setPendingOrderType(pendingOrderType === "buy" ? null : "buy")}
-                        className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
-                        style={{
-                          borderColor: "var(--positive-bg-default)",
-                          background: pendingOrderType === "buy" ? "var(--positive-bg-default)" : "transparent",
-                          color: pendingOrderType === "buy" ? "var(--positive-over)" : "var(--positive-bg-default)",
-                          fontFamily: "'Inter Display', sans-serif",
-                          fontSize: "var(--text-label)",
-                          fontWeight: "600",
-                        }}
-                      >
-                        + Buy
-                      </button>
-                      <button
-                        onClick={() => setPendingOrderType(pendingOrderType === "sell" ? null : "sell")}
-                        className="flex-1 flex items-center justify-center gap-[4px] px-[8px] py-[5px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer"
-                        style={{
-                          borderColor: "var(--negative-bg-default)",
-                          background: pendingOrderType === "sell" ? "var(--negative-bg-default)" : "transparent",
-                          color: pendingOrderType === "sell" ? "var(--negative-over)" : "var(--negative-bg-default)",
-                          fontFamily: "'Inter Display', sans-serif",
-                          fontSize: "var(--text-label)",
-                          fontWeight: "600",
-                        }}
-                      >
-                        + Sell
-                      </button>
-                      {orders.length > 0 && (
-                        <button
-                          onClick={() => setOrders([])}
-                          className="px-[8px] py-[5px] rounded-[var(--radius-sm)] border border-border transition-colors cursor-pointer"
-                          style={{
-                            color: "var(--muted-foreground)",
-                            fontFamily: "'Inter Display', sans-serif",
-                            fontSize: "var(--text-label)",
-                          }}
-                          title="Clear all orders"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="h-px" style={{ background: "var(--border)" }} />
-
-                {/* Panel header */}
-                <div className="flex items-center justify-between">
-                  <h4
-                    style={{
-                      color: "var(--foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                    }}
-                  >
-                    Price Lines
-                  </h4>
-                  <span
-                    style={{
-                      color: "var(--muted-foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                      fontSize: "var(--text-label)",
-                    }}
-                  >
-                    {priceLines.filter((p) => p.visible).length}/
-                    {priceLines.length} visible
-                  </span>
-                </div>
-
-                {/* Export / Import / Clear bar */}
-                <div className="flex items-center gap-[8px]">
-                  <button
-                    onClick={handleExport}
-                    className="flex-1 flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
-                    style={{
-                      color: "var(--foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                      fontSize: "var(--text-label)",
-                    }}
-                    title="Export price lines as JSON"
-                  >
-                    <Upload size={13} style={{ color: "var(--muted-foreground)" }} />
-                    Export
-                  </button>
-                  <label
-                    className="flex-1 flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
-                    style={{
-                      color: "var(--foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                      fontSize: "var(--text-label)",
-                    }}
-                    title="Import price lines from JSON"
-                  >
-                    <Download size={13} style={{ color: "var(--muted-foreground)" }} />
-                    Import
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={handleImport}
-                      className="hidden"
-                    />
-                  </label>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Delete all price lines and active orders? This cannot be undone.")) {
-                        setPriceLines([]);
-                        setOrders([]);
-                      }
-                    }}
-                    className="flex items-center justify-center w-[32px] h-[32px] shrink-0 rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
-                    title="Delete all price lines"
-                  >
-                    <Trash2 size={13} style={{ color: "var(--muted-foreground)" }} />
-                  </button>
-                </div>
-
-                {/* Import message toast */}
-                {importMessage && (
-                  <div
-                    className="px-[10px] py-[6px] rounded-[var(--radius-sm)] text-center transition-all"
-                    style={{
-                      background:
-                        importMessage.type === "success"
-                          ? "var(--success)"
-                          : "var(--destructive)",
-                      color:
-                        importMessage.type === "success"
-                          ? "var(--success-foreground)"
-                          : "var(--destructive-foreground)",
-                      fontFamily: "'Inter Display', sans-serif",
-                      fontSize: "var(--text-label)",
-                      fontWeight: "var(--font-weight-medium)",
-                    }}
-                  >
-                    {importMessage.text}
-                  </div>
                 )}
 
-                {/* Draggable list */}
-                {priceLines.map((config, index) => (
-                  <PriceLineEditor
-                    key={config.id}
-                    index={index}
-                    config={config}
-                    onChange={handleLineChange}
-                    onDelete={handleDeleteLine}
-                    onDuplicate={handleDuplicateLine}
-                    onMove={handleMoveLine}
-                    canDelete={true}
-                  />
-                ))}
-
-                {/* Add Level button */}
-                <button
-                  onClick={handleAddLevel}
-                  className="flex items-center justify-center gap-[6px] px-[12px] py-[10px] rounded-[var(--radius)] border border-dashed border-border hover:bg-secondary transition-colors cursor-pointer"
-                  style={{
-                    color: "var(--muted-foreground)",
-                    fontFamily: "'Inter Display', sans-serif",
-                    fontSize: "var(--text-base)",
-                  }}
-                >
-                  <Plus size={16} style={{ color: "var(--muted-foreground)" }} />
-                  Add Custom Level
-                </button>
-                </>
-                )}
               </div>
             </aside>
         </div>
