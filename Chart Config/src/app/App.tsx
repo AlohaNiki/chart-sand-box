@@ -516,42 +516,7 @@ export default function App() {
   };
 
   // ── Price lines shown on chart depend on active sidebar tab ───────────────
-  const historyPriceLines: PriceLineConfig[] = historyOrders.flatMap((order) => {
-    const isBuy = order.type === "buy";
-    const entryColor  = isBuy ? "--positive-bg-default"      : "--negative-bg-default";
-    const entryText   = isBuy ? "--positive-over"            : "--negative-over";
-    const exitColor   = isBuy ? "--positive-transparent"     : "--negative-transparent";
-    const op = order.operation ?? (isBuy ? "Long" : "Short");
-    const lines: PriceLineConfig[] = [
-      {
-        id: `${order.id}-entry`,
-        label: `${op} Entry`,
-        price: order.price,
-        color: entryColor,
-        labelColor: entryColor,
-        labelTextColor: entryText,
-        lineWidth: 1,
-        lineStyle: 2,
-        visible: true,
-      },
-    ];
-    if (order.closePrice !== undefined) {
-      lines.push({
-        id: `${order.id}-exit`,
-        label: `${op} Exit`,
-        price: order.closePrice,
-        color: exitColor,
-        labelColor: exitColor,
-        labelTextColor: entryText,
-        lineWidth: 1,
-        lineStyle: 3,
-        visible: true,
-      });
-    }
-    return lines;
-  });
-
-  const effectivePriceLines = sidebarMode === "history" ? historyPriceLines : priceLines;
+  const effectivePriceLines = sidebarMode === "history" ? [] : priceLines;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -658,7 +623,7 @@ export default function App() {
                   chartBg={chartBg}
                   gridColor={gridColor}
                   orders={orders}
-                  showOrders={sidebarMode === "active" ? showOrders : false}
+                  showOrders={showOrders}
                   pendingOrderType={sidebarMode === "active" ? pendingOrderType : null}
                   onOrderPlace={handleOrderPlace}
                   onCancelPending={() => setPendingOrderType(null)}
@@ -672,7 +637,7 @@ export default function App() {
                   chartBg={chartBg}
                   gridColor={gridColor}
                   orders={orders}
-                  showOrders={sidebarMode === "active" ? showOrders : false}
+                  showOrders={showOrders}
                   onOrderClick={setSelectedOrder}
                   pendingOrderType={pendingOrderType}
                   onOrderPlace={handleOrderPlace}
