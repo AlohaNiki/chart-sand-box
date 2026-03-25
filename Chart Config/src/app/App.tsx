@@ -808,6 +808,20 @@ export default function App() {
                     <Plus size={16} style={{ color: "var(--muted-foreground)" }} />
                     Add Custom Level
                   </button>
+
+                  {/* LineStyle reference */}
+                  <div className="flex flex-col gap-[6px] px-[2px]">
+                    <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", opacity: 0.6 }}>Line styles</span>
+                    {LINE_STYLE_SVG.map((s) => (
+                      <div key={s.value} className="flex items-center gap-[10px]">
+                        <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Mono', ui-monospace, monospace", fontSize: "var(--text-label)", width: 12, flexShrink: 0, opacity: 0.6 }}>{s.value}</span>
+                        <svg width="100%" height="8" viewBox="0 0 160 8" preserveAspectRatio="none">
+                          <line x1="0" y1="4" x2="160" y2="4" stroke="var(--muted-foreground)" strokeWidth="1.5" strokeDasharray={s.dash} strokeLinecap="round" opacity="0.5" />
+                        </svg>
+                        <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", opacity: 0.6, width: 40, textAlign: "right", flexShrink: 0 }}>{s.label}</span>
+                      </div>
+                    ))}
+                  </div>
                   </>
                 )}
 
