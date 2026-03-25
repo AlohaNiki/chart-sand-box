@@ -407,6 +407,7 @@ interface ChartWidgetProps {
   onCancelPending?: () => void;
   onOrderClick?: (order: TradeOrder) => void;
   onOrderPriceChange?: (id: string, newPrice: number) => void;
+  onLivePrice?: (price: number) => void;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -426,6 +427,7 @@ function rgba(rgbVar: string, alpha: number): string {
 export function ChartWidget({
   priceLines, onPriceLineDrag, theme, chartBg, gridColor,
   orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick, onOrderPriceChange,
+  onLivePrice,
 }: ChartWidgetProps) {
   const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -773,6 +775,7 @@ export function ChartWidget({
         if (candles.length > 0) {
           currentPriceRef.current = candles[candles.length - 1].close;
           pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
+          onLivePrice?.(currentPriceRef.current);
         }
 
         // Sync indicators with fresh data
@@ -801,6 +804,7 @@ export function ChartWidget({
             const close = parseFloat(k.c as string);
             currentPriceRef.current = close;
             pnlPluginRef.current?.setCurrentPrice(close);
+            onLivePrice?.(close);
 
             // Update last candle in stored data and refresh indicator last point
             const data = candleDataRef.current;

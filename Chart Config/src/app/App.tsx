@@ -356,6 +356,8 @@ export default function App() {
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, price: newPrice } : o));
   }, []);
 
+  const livePriceRef = useRef(0);
+
   const [importMessage, setImportMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -380,11 +382,11 @@ export default function App() {
 
   const handleAddLevel = () => {
     const id = `custom-${nextCustomId++}`;
-    const lastPrice = priceLines[priceLines.length - 1]?.price ?? 43000;
+    const basePrice = livePriceRef.current || priceLines[priceLines.length - 1]?.price || 43000;
     const newLine: PriceLineConfig = {
       id,
       label: `Level ${nextCustomId - 1}`,
-      price: Math.round(lastPrice + (Math.random() - 0.5) * 2000),
+      price: Math.round(basePrice),
       color: "--accent-text-and-icons",
       labelColor: "--accent-text-and-icons",
       labelTextColor: "--accent-over",
@@ -629,6 +631,7 @@ export default function App() {
                   onCancelPending={() => setPendingOrderType(null)}
                   onOrderClick={setSelectedOrder}
                   onOrderPriceChange={handleOrderPriceChange}
+                  onLivePrice={(p) => { livePriceRef.current = p; }}
                 />
               ) : (
                 <KlineChartWidget
