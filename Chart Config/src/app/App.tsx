@@ -515,6 +515,44 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // ── Price lines shown on chart depend on active sidebar tab ───────────────
+  const historyPriceLines: PriceLineConfig[] = historyOrders.flatMap((order) => {
+    const isBuy = order.type === "buy";
+    const entryColor  = isBuy ? "--positive-bg-default"      : "--negative-bg-default";
+    const entryText   = isBuy ? "--positive-over"            : "--negative-over";
+    const exitColor   = isBuy ? "--positive-transparent"     : "--negative-transparent";
+    const op = order.operation ?? (isBuy ? "Long" : "Short");
+    const lines: PriceLineConfig[] = [
+      {
+        id: `${order.id}-entry`,
+        label: `${op} Entry`,
+        price: order.price,
+        color: entryColor,
+        labelColor: entryColor,
+        labelTextColor: entryText,
+        lineWidth: 1,
+        lineStyle: 2,
+        visible: true,
+      },
+    ];
+    if (order.closePrice !== undefined) {
+      lines.push({
+        id: `${order.id}-exit`,
+        label: `${op} Exit`,
+        price: order.closePrice,
+        color: exitColor,
+        labelColor: exitColor,
+        labelTextColor: entryText,
+        lineWidth: 1,
+        lineStyle: 3,
+        visible: true,
+      });
+    }
+    return lines;
+  });
+
+  const effectivePriceLines = sidebarMode === "history" ? historyPriceLines : priceLines;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div
@@ -614,14 +652,14 @@ export default function App() {
             >
               {chartMode === "lightweight" ? (
                 <ChartWidget
-                  priceLines={priceLines}
-                  onPriceLineDrag={handleChartDrag}
+                  priceLines={effectivePriceLines}
+                  onPriceLineDrag={sidebarMode === "active" ? handleChartDrag : undefined}
                   theme={theme}
                   chartBg={chartBg}
                   gridColor={gridColor}
                   orders={orders}
-                  showOrders={showOrders}
-                  pendingOrderType={pendingOrderType}
+                  showOrders={sidebarMode === "active" ? showOrders : false}
+                  pendingOrderType={sidebarMode === "active" ? pendingOrderType : null}
                   onOrderPlace={handleOrderPlace}
                   onCancelPending={() => setPendingOrderType(null)}
                   onOrderClick={setSelectedOrder}
@@ -629,12 +667,12 @@ export default function App() {
                 />
               ) : (
                 <KlineChartWidget
-                  priceLines={priceLines}
+                  priceLines={effectivePriceLines}
                   theme={theme}
                   chartBg={chartBg}
                   gridColor={gridColor}
                   orders={orders}
-                  showOrders={showOrders}
+                  showOrders={sidebarMode === "active" ? showOrders : false}
                   onOrderClick={setSelectedOrder}
                   pendingOrderType={pendingOrderType}
                   onOrderPlace={handleOrderPlace}
