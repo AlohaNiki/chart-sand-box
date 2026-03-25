@@ -205,9 +205,27 @@ const STORAGE_KEYS = {
   priceLines: "chartConfig_priceLines",
   chartBg: "chartConfig_chartBg",
   gridColor: "chartConfig_gridColor",
+  gridStyle: "chartConfig_gridStyle",
+  showGrid: "chartConfig_showGrid",
   showOrders: "chartConfig_showOrders",
   orders: "chartConfig_orders",
+  currentPriceLine: "chartConfig_currentPriceLine",
+  crosshair: "chartConfig_crosshair",
+  sidebarTab: "chartConfig_sidebarTab",
+  chartMode: "chartConfig_chartMode",
+  historyOrders: "chartConfig_historyOrders",
 } as const;
+
+function lsGet<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === null) return fallback;
+    return JSON.parse(v) as T;
+  } catch { return fallback; }
+}
+function lsSet(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
 
 let nextCustomId = 1;
 
@@ -274,50 +292,37 @@ export default function App() {
   }, [priceLines]);
 
   // ── Chart appearance settings ─────────────────────────────────────────────
-  const [chartBg, setChartBg] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEYS.chartBg) || "--surface-elevation-1"; } catch { return "--surface-elevation-1"; }
-  });
-  const [gridColor, setGridColor] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEYS.gridColor) || "--contrast-quaternary"; } catch { return "--contrast-quaternary"; }
-  });
+  const [chartBg, setChartBg] = useState<string>(() => lsGet(STORAGE_KEYS.chartBg, "--surface-elevation-1"));
+  const [gridColor, setGridColor] = useState<string>(() => lsGet(STORAGE_KEYS.gridColor, "--contrast-quaternary"));
 
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.chartBg, chartBg); } catch {} }, [chartBg]);
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.gridColor, gridColor); } catch {} }, [gridColor]);
+  useEffect(() => { lsSet(STORAGE_KEYS.chartBg, chartBg); }, [chartBg]);
+  useEffect(() => { lsSet(STORAGE_KEYS.gridColor, gridColor); }, [gridColor]);
 
   // ── Trade orders ──────────────────────────────────────────────────────────
-  const [showOrders, setShowOrders] = useState<boolean>(() => {
-    try { return localStorage.getItem(STORAGE_KEYS.showOrders) !== "false"; } catch { return true; }
-  });
+  const [showOrders, setShowOrders] = useState<boolean>(() => lsGet(STORAGE_KEYS.showOrders, true));
   const [orders, setOrders] = useState<TradeOrder[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.orders);
-      if (!stored) return DEFAULT_ORDERS;
-      const parsed = JSON.parse(stored);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ORDERS;
-    } catch { return DEFAULT_ORDERS; }
+    const stored = lsGet<TradeOrder[]>(STORAGE_KEYS.orders, []);
+    return stored.length > 0 ? stored : DEFAULT_ORDERS;
   });
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [chartMode, setChartMode] = useState<"lightweight" | "klinechart">("lightweight");
+  const [chartMode, setChartMode] = useState<"lightweight" | "klinechart">(() => lsGet(STORAGE_KEYS.chartMode, "lightweight"));
 
   // ── History tab ───────────────────────────────────────────────────────────
-  const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">("orders");
-  const [currentPriceLineConfig, setCurrentPriceLineConfig] = useState<CurrentPriceLineConfig>({
-    visible: true,
-    color: "--accent-bg-default",
-    lineWidth: 1,
-    lineStyle: 2,
+  const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">(() => lsGet(STORAGE_KEYS.sidebarTab, "orders"));
+  const [currentPriceLineConfig, setCurrentPriceLineConfig] = useState<CurrentPriceLineConfig>(() =>
+    lsGet(STORAGE_KEYS.currentPriceLine, { visible: true, color: "--accent-bg-default", lineWidth: 1, lineStyle: 2 })
+  );
+  const [crosshairConfig, setCrosshairConfig] = useState<CrosshairConfig>(() =>
+    lsGet(STORAGE_KEYS.crosshair, { mode: 0, hStyle: 0, vStyle: 0, color: "--accent-bg-default" })
+  );
+  const [gridStyle, setGridStyle] = useState<number>(() => lsGet(STORAGE_KEYS.gridStyle, 0));
+  const [showGrid, setShowGrid] = useState<boolean>(() => lsGet(STORAGE_KEYS.showGrid, true));
+  const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(() => {
+    const stored = lsGet<TradeOrder[]>(STORAGE_KEYS.historyOrders, []);
+    return stored.length > 0 ? stored : DEFAULT_HISTORY_ORDERS;
   });
-  const [crosshairConfig, setCrosshairConfig] = useState<CrosshairConfig>({
-    mode: 0,
-    hStyle: 0,
-    vStyle: 0,
-    color: "--accent-bg-default",
-  });
-  const [gridStyle, setGridStyle] = useState(0);
-  const [showGrid, setShowGrid] = useState(true);
-  const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(DEFAULT_HISTORY_ORDERS);
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<TradeOrder | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
 
@@ -358,8 +363,15 @@ export default function App() {
     setAddOpenTime(""); setAddCloseTime(""); setAddEntryPrice(""); setAddClosePrice(""); setAddLeverage("");
   };
 
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.showOrders, String(showOrders)); } catch {} }, [showOrders]);
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders)); } catch {} }, [orders]);
+  useEffect(() => { lsSet(STORAGE_KEYS.showOrders, showOrders); }, [showOrders]);
+  useEffect(() => { lsSet(STORAGE_KEYS.orders, orders); }, [orders]);
+  useEffect(() => { lsSet(STORAGE_KEYS.currentPriceLine, currentPriceLineConfig); }, [currentPriceLineConfig]);
+  useEffect(() => { lsSet(STORAGE_KEYS.crosshair, crosshairConfig); }, [crosshairConfig]);
+  useEffect(() => { lsSet(STORAGE_KEYS.gridStyle, gridStyle); }, [gridStyle]);
+  useEffect(() => { lsSet(STORAGE_KEYS.showGrid, showGrid); }, [showGrid]);
+  useEffect(() => { lsSet(STORAGE_KEYS.sidebarTab, sidebarTab); }, [sidebarTab]);
+  useEffect(() => { lsSet(STORAGE_KEYS.chartMode, chartMode); }, [chartMode]);
+  useEffect(() => { lsSet(STORAGE_KEYS.historyOrders, historyOrders); }, [historyOrders]);
 
   const handleOrderPlace = useCallback((order: TradeOrder) => {
     setOrders((prev) => [...prev, order]);
