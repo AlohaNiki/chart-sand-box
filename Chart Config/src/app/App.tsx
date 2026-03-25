@@ -14,6 +14,7 @@ import {
   Plus,
   Download,
   Upload,
+  Trash2,
   Sun,
   Moon,
   ScrollText,
@@ -848,7 +849,7 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Export / Import bar */}
+                {/* Export / Import / Clear bar */}
                 <div className="flex items-center gap-[8px]">
                   <button
                     onClick={handleExport}
@@ -882,6 +883,17 @@ export default function App() {
                       className="hidden"
                     />
                   </label>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Delete all price lines? This cannot be undone.")) {
+                        setPriceLines([]);
+                      }
+                    }}
+                    className="flex items-center justify-center w-[32px] h-[32px] shrink-0 rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+                    title="Delete all price lines"
+                  >
+                    <Trash2 size={13} style={{ color: "var(--muted-foreground)" }} />
+                  </button>
                 </div>
 
                 {/* Import message toast */}
