@@ -10,6 +10,27 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.20",
+    date: "Mar 25, 2026",
+    title: "Chart tab, settings persistence & UX polish",
+    items: [
+      "Sidebar restructured into 3 tabs: Chart, Orders, History",
+      "Chart tab: background & grid color, grid style picker (Solid/Dot/Dash/Large/Sparse), Show Grid toggle",
+      "Chart tab: Current Price Line settings — visible, follow candle color, color, style, width",
+      "Chart tab: Crosshair settings — color picker, Normal/Magnet mode, H/V line style pickers",
+      "All settings now persisted to localStorage (crosshair, price line config, grid, sidebar tab, chart mode, history orders)",
+      "Reset restores all settings including new Chart tab options",
+      "Follow candle color: price line color updates live on each WebSocket tick",
+      "LineStyle reference cheat-sheet (0–4) added below Add Custom Level in Orders tab",
+      "Removed SuperCharts tab",
+      "Order entry Short/Long price lines and PnL badges removed from main chart",
+      "History tab hides all price lines — only markers shown",
+      "Entry/Exit lines in TradeChartModal now match Orders style (Solid 0.5px, contrast palette)",
+      "Add Custom Level defaults to live BTC price",
+      "Delete All clears both price lines and active orders",
+    ],
+  },
+  {
     version: "0.14",
     date: "Mar 18, 2026",
     title: "History tab & trade chart modal",
