@@ -501,11 +501,13 @@ export function PriceLineEditor({
 
         {canDelete && (
           <button
-            onClick={() => onDelete(config.id)}
+            onClick={() => {
+              if (window.confirm(`Delete "${config.label}"?`)) onDelete(config.id);
+            }}
             className="shrink-0 p-[4px] rounded hover:bg-secondary transition-colors cursor-pointer"
             title="Delete line"
           >
-            <Trash2 size={14} style={{ color: "var(--destructive)" }} />
+            <Trash2 size={14} style={{ color: "var(--muted-foreground)" }} />
           </button>
         )}
 
