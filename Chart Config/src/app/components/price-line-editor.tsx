@@ -499,6 +499,16 @@ export function PriceLineEditor({
             : <EyeOff size={14} style={{ color: "var(--muted-foreground)" }} />}
         </button>
 
+        {canDelete && (
+          <button
+            onClick={() => onDelete(config.id)}
+            className="shrink-0 p-[4px] rounded hover:bg-secondary transition-colors cursor-pointer"
+            title="Delete line"
+          >
+            <Trash2 size={14} style={{ color: "var(--destructive)" }} />
+          </button>
+        )}
+
         <button
           onClick={() => setExpanded(!expanded)}
           className="shrink-0 p-[4px] rounded hover:bg-secondary transition-colors cursor-pointer"
@@ -573,35 +583,51 @@ export function PriceLineEditor({
           </div>
 
           {/* Line Style */}
-          <div className="flex items-center gap-[8px]">
-            <label className="w-[80px] shrink-0" style={labelStyle}>Style</label>
-            <select
-              value={config.lineStyle}
-              onChange={(e) => onChange({ ...config, lineStyle: parseInt(e.target.value, 10) })}
-              style={{ ...inputStyle, cursor: "pointer", appearance: "auto" as const }}
-            >
-              {LINE_STYLE_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-[6px]">
+            <label style={labelStyle}>Style</label>
+            <div className="flex gap-[4px]">
+              {LINE_STYLE_OPTIONS.map((s) => {
+                const active = config.lineStyle === s.value;
+                const dashArray =
+                  s.value === 0 ? undefined :
+                  s.value === 1 ? "2,2" :
+                  s.value === 2 ? "5,3" :
+                  s.value === 3 ? "7,3" :
+                  "2,6";
+                const shortLabel =
+                  s.value === 0 ? "Solid" :
+                  s.value === 1 ? "Dot" :
+                  s.value === 2 ? "Dash" :
+                  s.value === 3 ? "Large" :
+                  "Sparse";
+                return (
+                  <button
+                    key={s.value}
+                    onClick={() => onChange({ ...config, lineStyle: s.value })}
+                    title={s.label}
+                    className="flex-1 flex flex-col items-center gap-[4px] py-[6px] px-[2px] rounded cursor-pointer transition-colors"
+                    style={{
+                      background: active ? "var(--secondary)" : "transparent",
+                      border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                    }}
+                  >
+                    <svg width="28" height="8" viewBox="0 0 28 8" style={{ overflow: "visible" }}>
+                      <line
+                        x1="2" y1="4" x2="26" y2="4"
+                        stroke={active ? "var(--foreground)" : "var(--muted-foreground)"}
+                        strokeWidth="1.5"
+                        strokeDasharray={dashArray}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span style={{ fontSize: "9px", color: active ? "var(--foreground)" : "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif" }}>
+                      {shortLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
-          {/* Delete */}
-          {canDelete && (
-            <button
-              onClick={() => onDelete(config.id)}
-              className="flex items-center justify-center gap-[6px] px-[10px] py-[6px] rounded-[var(--radius)] border transition-colors cursor-pointer mt-[4px]"
-              style={{
-                borderColor: "var(--destructive)",
-                color: "var(--destructive)",
-                fontFamily: "'Inter Display', sans-serif",
-                fontSize: "var(--text-label)",
-              }}
-            >
-              <Trash2 size={13} style={{ color: "var(--destructive)" }} />
-              Delete Line
-            </button>
-          )}
 
           {/* Duplicate */}
           <button
@@ -617,6 +643,20 @@ export function PriceLineEditor({
             <Copy size={13} style={{ color: "var(--primary)" }} />
             Duplicate Line
           </button>
+
+          {/* Show PnL */}
+          <label
+            className="flex items-center gap-[8px] cursor-pointer"
+            style={{ ...labelStyle, color: "var(--foreground)" }}
+          >
+            <input
+              type="checkbox"
+              checked={config.showPnl ?? false}
+              onChange={(e) => onChange({ ...config, showPnl: e.target.checked })}
+              className="cursor-pointer"
+            />
+            Show PnL
+          </label>
         </div>
       )}
     </div>

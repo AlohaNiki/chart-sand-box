@@ -3,7 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder } from "./components/chart-widget";
-import { SuperChartsWidget } from "./components/supercharts-widget";
+
 import { KlineChartWidget } from "./components/klinechart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
 import { TradeChartModal } from "./components/trade-chart-modal";
@@ -114,8 +114,6 @@ const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
   },
 ];
 
-// Static fallback used only for localStorage validation shape
-const BUILT_IN_IDS = new Set(["buy-order", "take-profit", "stop-loss", "liquidation"]);
 
 /** Default trade orders shown on first visit / after Reset */
 const DEFAULT_ORDERS: TradeOrder[] = [
@@ -300,7 +298,7 @@ export default function App() {
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [chartMode, setChartMode] = useState<"lightweight" | "supercharts" | "klinechart">("lightweight");
+  const [chartMode, setChartMode] = useState<"lightweight" | "klinechart">("lightweight");
 
   // ── History tab ───────────────────────────────────────────────────────────
   const [sidebarMode, setSidebarMode] = useState<"active" | "history">("active");
@@ -550,7 +548,7 @@ export default function App() {
             className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
             style={{ background: "var(--secondary)" }}
           >
-            {(["lightweight", "klinechart", "supercharts"] as const).map((mode) => (
+            {(["lightweight", "klinechart"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setChartMode(mode)}
@@ -563,7 +561,7 @@ export default function App() {
                   fontWeight: chartMode === mode ? "600" : "400",
                 }}
               >
-                {mode === "lightweight" ? "Lightweight" : mode === "supercharts" ? "SuperCharts" : "KLineChart"}
+                {mode === "lightweight" ? "Lightweight" : "KLineChart"}
               </button>
             ))}
           </div>
@@ -628,8 +626,6 @@ export default function App() {
                   onOrderClick={setSelectedOrder}
                   onOrderPriceChange={handleOrderPriceChange}
                 />
-              ) : chartMode === "supercharts" ? (
-                <SuperChartsWidget theme={theme} />
               ) : (
                 <KlineChartWidget
                   priceLines={priceLines}
@@ -652,18 +648,6 @@ export default function App() {
               className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-border overflow-y-auto"
               style={{ background: "var(--sidebar)" }}
             >
-              {chartMode === "supercharts" ? (
-                <div className="h-full flex flex-col items-center justify-center gap-[12px] p-[24px] text-center">
-                  <span style={{ fontSize: "32px" }}>🔒</span>
-                  <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>
-                    Settings unavailable
-                  </h4>
-                  <p style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", lineHeight: "1.5" }}>
-                    Chart customization will be available once we get access to the TradingView Charting Library.
-                    The library requires a formal approval process with TradingView.
-                  </p>
-                </div>
-              ) : (
               <div className="p-[16px] flex flex-col gap-[12px]">
                 {/* Active / History toggle */}
                 <div
@@ -932,7 +916,7 @@ export default function App() {
                     onDelete={handleDeleteLine}
                     onDuplicate={handleDuplicateLine}
                     onMove={handleMoveLine}
-                    canDelete={!BUILT_IN_IDS.has(config.id)}
+                    canDelete={true}
                   />
                 ))}
 
@@ -952,7 +936,6 @@ export default function App() {
                 </>
                 )}
               </div>
-              )}
             </aside>
         </div>
       </div>

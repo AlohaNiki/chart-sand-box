@@ -185,6 +185,7 @@ class OrderMarkersPrimitive {
 
 class PnLBadgesRenderer {
   orders: TradeOrder[] = [];
+  priceLevelBadges: PriceLineConfig[] = [];
   currentPrice = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   series: any = null;
@@ -192,7 +193,8 @@ class PnLBadgesRenderer {
   chart: any = null;
 
   draw(target: CanvasRenderingTarget2D): void {
-    if (!this.series || !this.currentPrice || !this.orders.length) return;
+    if (!this.series || !this.currentPrice) return;
+    if (!this.orders.length && !this.priceLevelBadges.length) return;
 
     target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
       const fontSize = 12 * hpr;
@@ -221,6 +223,31 @@ class PnLBadgesRenderer {
 
         const bg  = isProfit ? css("--positive-bg-default") : css("--negative-bg-default");
         const fg  = isProfit ? css("--positive-over")       : css("--negative-over");
+
+        const W = ctx.measureText(text).width + PAD_H * 2;
+        const H = fontSize + PAD_V * 2;
+
+        ctx.save();
+        ctx.fillStyle = bg;
+        drawRoundedRect(ctx, LEFT, ry - H / 2, W, H, R);
+        ctx.fill();
+        ctx.fillStyle = fg;
+        ctx.fillText(text, LEFT + PAD_H, ry);
+        ctx.restore();
+      }
+
+      for (const level of this.priceLevelBadges) {
+        const cy = this.series.priceToCoordinate(level.price);
+        if (cy === null) continue;
+        const ry = cy * vpr;
+
+        const pct = ((this.currentPrice - level.price) / level.price) * 100;
+        const isAbove = pct >= 0;
+        const sign = isAbove ? "+" : "";
+        const text = `${sign}${pct.toFixed(2)}%`;
+
+        const bg = isAbove ? css("--positive-bg-default") : css("--negative-bg-default");
+        const fg = isAbove ? css("--positive-over") : css("--negative-over");
 
         const W = ctx.measureText(text).width + PAD_H * 2;
         const H = fontSize + PAD_V * 2;
@@ -262,6 +289,10 @@ class PnLBadgesPrimitive {
   }
   setCurrentPrice(price: number) {
     this._renderer.currentPrice = price;
+    this._requestUpdate?.();
+  }
+  setPriceLevelBadges(levels: PriceLineConfig[]) {
+    this._renderer.priceLevelBadges = levels;
     this._requestUpdate?.();
   }
 }
@@ -348,6 +379,7 @@ export interface PriceLineConfig {
   lineWidth: number;
   lineStyle: number;
   visible: boolean;
+  showPnl?: boolean;
 }
 
 interface IndicatorState {
@@ -904,8 +936,12 @@ export function ChartWidget({
     }
 
     pnlPluginRef.current?.setOrders(activeOrders, true);
+
+    const levelBadges = priceLines.filter((pl) => pl.showPnl && pl.visible);
+    pnlPluginRef.current?.setPriceLevelBadges(levelBadges);
+
     if (currentPriceRef.current) pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
-  }, [orders, showOrders, theme, chartReady]);
+  }, [orders, showOrders, theme, chartReady, priceLines]);
 
   // ── Click-to-place order ──────────────────────────────────────────────────
   useEffect(() => {
