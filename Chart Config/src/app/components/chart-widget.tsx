@@ -454,7 +454,6 @@ export function ChartWidget({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersPluginRef = useRef<any>(null);
   const pnlPluginRef    = useRef<PnLBadgesPrimitive | null>(null);
-  const pnlPriceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
   const currentPriceRef = useRef(0);
   const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
 
@@ -957,27 +956,7 @@ export function ChartWidget({
     const series = seriesRef.current;
     if (!series || !chartReady) return;
 
-    // Remove old entry price lines
-    pnlPriceLinesRef.current.forEach((line) => { try { series.removePriceLine(line); } catch {} });
-    pnlPriceLinesRef.current.clear();
-
     const activeOrders = showOrders ? (orders ?? []) : [];
-
-    for (const order of activeOrders) {
-      const isBuy = order.type === "buy";
-      const color = isBuy ? css("--positive-bg-default") : css("--negative-bg-default");
-      const line = series.createPriceLine({
-        price: order.price,
-        color,
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: isBuy ? "Long" : "Short",
-        axisLabelColor: color,
-        axisLabelTextColor: isBuy ? css("--positive-over") : css("--negative-over"),
-      });
-      pnlPriceLinesRef.current.set(order.id, line);
-    }
 
     pnlPluginRef.current?.setOrders(activeOrders, true);
 
