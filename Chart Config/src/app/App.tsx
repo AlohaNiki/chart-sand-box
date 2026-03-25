@@ -923,8 +923,9 @@ export default function App() {
                   </label>
                   <button
                     onClick={() => {
-                      if (window.confirm("Delete all price lines? This cannot be undone.")) {
+                      if (window.confirm("Delete all price lines and active orders? This cannot be undone.")) {
                         setPriceLines([]);
+                        setOrders([]);
                       }
                     }}
                     className="flex items-center justify-center w-[32px] h-[32px] shrink-0 rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
