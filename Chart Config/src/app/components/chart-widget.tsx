@@ -956,15 +956,11 @@ export function ChartWidget({
     const series = seriesRef.current;
     if (!series || !chartReady) return;
 
-    const activeOrders = showOrders ? (orders ?? []) : [];
-
-    pnlPluginRef.current?.setOrders(activeOrders, true);
-
     const levelBadges = priceLines.filter((pl) => pl.showPnl && pl.visible);
     pnlPluginRef.current?.setPriceLevelBadges(levelBadges);
 
     if (currentPriceRef.current) pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
-  }, [orders, showOrders, theme, chartReady, priceLines]);
+  }, [theme, chartReady, priceLines]);
 
   // ── Click-to-place order ──────────────────────────────────────────────────
   useEffect(() => {
