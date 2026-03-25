@@ -313,7 +313,10 @@ export default function App() {
     mode: 0,
     hStyle: 0,
     vStyle: 0,
+    color: "--accent-bg-default",
   });
+  const [gridStyle, setGridStyle] = useState(0);
+  const [showGrid, setShowGrid] = useState(true);
   const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(DEFAULT_HISTORY_ORDERS);
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<TradeOrder | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
@@ -652,6 +655,8 @@ export default function App() {
                   onLivePrice={(p) => { livePriceRef.current = p; }}
                   currentPriceLineConfig={currentPriceLineConfig}
                   crosshairConfig={crosshairConfig}
+                  gridStyle={gridStyle}
+                  showGrid={showGrid}
                 />
               ) : (
                 <KlineChartWidget
@@ -711,8 +716,29 @@ export default function App() {
                       <ColorTokenPicker value={chartBg} onChange={setChartBg} />
                     </div>
                     <div className="flex flex-col gap-[4px]">
-                      <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Grid</span>
-                      <ColorTokenPicker value={gridColor} onChange={setGridColor} />
+                      <div className="flex items-center justify-between">
+                        <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Grid</span>
+                        <label className="flex items-center gap-[6px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                          <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} className="cursor-pointer" />
+                          Show
+                        </label>
+                      </div>
+                      <div style={{ opacity: showGrid ? 1 : 0.4, pointerEvents: showGrid ? "auto" : "none" }}>
+                        <ColorTokenPicker value={gridColor} onChange={setGridColor} />
+                      </div>
+                      <div className="flex gap-[4px]" style={{ opacity: showGrid ? 1 : 0.4, pointerEvents: showGrid ? "auto" : "none" }}>
+                        {LINE_STYLE_SVG.map((s) => {
+                          const active = gridStyle === s.value;
+                          return (
+                            <button key={s.value} onClick={() => setGridStyle(s.value)} title={s.label}
+                              className="flex-1 flex flex-col items-center gap-[4px] py-[6px] px-[2px] rounded cursor-pointer transition-colors"
+                              style={{ background: active ? "var(--secondary)" : "transparent", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}` }}>
+                              <svg width="28" height="8" viewBox="0 0 28 8"><line x1="2" y1="4" x2="26" y2="4" stroke={active ? "var(--foreground)" : "var(--muted-foreground)"} strokeWidth="1.5" strokeDasharray={s.dash} strokeLinecap="round" /></svg>
+                              <span style={{ fontSize: "9px", color: active ? "var(--foreground)" : "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif" }}>{s.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -726,8 +752,15 @@ export default function App() {
                       <input type="checkbox" checked={currentPriceLineConfig.visible} onChange={(e) => setCurrentPriceLineConfig(c => ({ ...c, visible: e.target.checked }))} className="cursor-pointer" />
                       Visible
                     </label>
-                    {/* Color */}
-                    <ColorTokenPicker label="Color" value={currentPriceLineConfig.color} onChange={(c) => setCurrentPriceLineConfig(cfg => ({ ...cfg, color: c }))} />
+                    {/* Follow candle color */}
+                    <label className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                      <input type="checkbox" checked={currentPriceLineConfig.followCandleColor ?? false} onChange={(e) => setCurrentPriceLineConfig(c => ({ ...c, followCandleColor: e.target.checked }))} className="cursor-pointer" />
+                      Follow candle color
+                    </label>
+                    {/* Color (disabled when followCandleColor) */}
+                    <div style={{ opacity: currentPriceLineConfig.followCandleColor ? 0.4 : 1, pointerEvents: currentPriceLineConfig.followCandleColor ? "none" : "auto" }}>
+                      <ColorTokenPicker label="Color" value={currentPriceLineConfig.color} onChange={(c) => setCurrentPriceLineConfig(cfg => ({ ...cfg, color: c }))} />
+                    </div>
                     {/* Style */}
                     <div className="flex flex-col gap-[6px]">
                       <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Style</span>
@@ -761,6 +794,8 @@ export default function App() {
                   {/* Crosshair */}
                   <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Crosshair</h4>
                   <div className="flex flex-col gap-[8px]">
+                    {/* Color */}
+                    <ColorTokenPicker label="Color" value={crosshairConfig.color ?? "--accent-bg-default"} onChange={(c) => setCrosshairConfig(cfg => ({ ...cfg, color: c }))} />
                     {/* Mode */}
                     <div className="flex flex-col gap-[6px]">
                       <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Mode</span>

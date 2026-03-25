@@ -400,12 +400,14 @@ export interface CurrentPriceLineConfig {
   color: string;
   lineWidth: number;
   lineStyle: number;
+  followCandleColor?: boolean;
 }
 
 export interface CrosshairConfig {
   mode: number; // 0 = Normal, 1 = Magnet
   hStyle: number;
   vStyle: number;
+  color?: string; // CSS token, e.g. "--accent-bg-default"
 }
 
 interface ChartWidgetProps {
@@ -424,6 +426,8 @@ interface ChartWidgetProps {
   onLivePrice?: (price: number) => void;
   currentPriceLineConfig?: CurrentPriceLineConfig;
   crosshairConfig?: CrosshairConfig;
+  gridStyle?: number;
+  showGrid?: boolean;
 }
 
 type WsStatus = "connecting" | "live" | "offline";
@@ -443,7 +447,7 @@ function rgba(rgbVar: string, alpha: number): string {
 export function ChartWidget({
   priceLines, onPriceLineDrag, theme, chartBg, gridColor,
   orders, showOrders, pendingOrderType, onOrderPlace, onCancelPending, onOrderClick, onOrderPriceChange,
-  onLivePrice, currentPriceLineConfig, crosshairConfig,
+  onLivePrice, currentPriceLineConfig, crosshairConfig, gridStyle, showGrid,
 }: ChartWidgetProps) {
   const [indicators, setIndicators] = useState<IndicatorState>({ ema20: false, ema50: false, rsi: false });
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -455,6 +459,9 @@ export function ChartWidget({
   const markersPluginRef = useRef<any>(null);
   const pnlPluginRef    = useRef<PnLBadgesPrimitive | null>(null);
   const currentPriceRef = useRef(0);
+  const lastCandleBullishRef = useRef(true);
+  const currentPriceLineConfigRef = useRef(currentPriceLineConfig);
+  useEffect(() => { currentPriceLineConfigRef.current = currentPriceLineConfig; }, [currentPriceLineConfig]);
   const candleMapRef = useRef<Map<number, { high: number; low: number }>>(new Map());
 
   // Candle data stored for indicator recalculation
@@ -515,8 +522,8 @@ export function ChartWidget({
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: resolveColor(gridColor ?? "--border") },
-        horzLines: { color: resolveColor(gridColor ?? "--border") },
+        vertLines: { color: resolveColor(gridColor ?? "--border"), style: gridStyle ?? LineStyle.Solid, visible: showGrid !== false },
+        horzLines: { color: resolveColor(gridColor ?? "--border"), style: gridStyle ?? LineStyle.Solid, visible: showGrid !== false },
       },
       crosshair: {
         vertLine: { color: rgba("--accent-bg-default-rgb", 0.4), labelBackgroundColor: css("--accent-bg-default") },
@@ -788,7 +795,9 @@ export function ChartWidget({
 
         // Seed current price from last candle
         if (candles.length > 0) {
-          currentPriceRef.current = candles[candles.length - 1].close;
+          const last = candles[candles.length - 1];
+          currentPriceRef.current = last.close;
+          lastCandleBullishRef.current = last.close >= last.open;
           pnlPluginRef.current?.setCurrentPrice(currentPriceRef.current);
           onLivePrice?.(currentPriceRef.current);
         }
@@ -817,9 +826,16 @@ export function ChartWidget({
             seriesRef.current?.update(updated);
             candleMapRef.current.set(t, { high: hi, low: lo });
             const close = parseFloat(k.c as string);
+            const open  = parseFloat(k.o as string);
             currentPriceRef.current = close;
+            lastCandleBullishRef.current = close >= open;
             pnlPluginRef.current?.setCurrentPrice(close);
             onLivePrice?.(close);
+            if (currentPriceLineConfigRef.current?.followCandleColor) {
+              seriesRef.current?.applyOptions({
+                priceLineColor: close >= open ? css("--positive-bg-default") : css("--negative-bg-default"),
+              });
+            }
 
             // Update last candle in stored data and refresh indicator last point
             const data = candleDataRef.current;
@@ -863,12 +879,16 @@ export function ChartWidget({
     if (!chart || !series) return;
 
     const resolvedGrid = resolveColor(gridColor ?? "--border");
+    const gridVisible = showGrid !== false;
     chart.applyOptions({
       layout: {
         textColor: css("--contrast-secondary"),
         background: { type: ColorType.Solid, color: resolveColor(chartBg ?? "--surface-canvas") },
       },
-      grid: { vertLines: { color: resolvedGrid }, horzLines: { color: resolvedGrid } },
+      grid: {
+        vertLines: { color: resolvedGrid, style: gridStyle ?? LineStyle.Solid, visible: gridVisible },
+        horzLines: { color: resolvedGrid, style: gridStyle ?? LineStyle.Solid, visible: gridVisible },
+      },
       rightPriceScale: { borderColor: css("--border") },
       timeScale: { borderColor: css("--border") },
     });
@@ -880,16 +900,17 @@ export function ChartWidget({
       wickUpColor: rgba("--positive-bg-default-rgb", 0.6),
       wickDownColor: rgba("--negative-bg-default-rgb", 0.6),
     });
-  }, [theme, chartBg, gridColor]);
+  }, [theme, chartBg, gridColor, gridStyle, showGrid]);
 
   // ── Current price line ────────────────────────────────────────────────────
   useEffect(() => {
     const series = seriesRef.current;
     if (!series || !chartReady) return;
     const cfg = currentPriceLineConfig;
+    const candleColor = lastCandleBullishRef.current ? css("--positive-bg-default") : css("--negative-bg-default");
     series.applyOptions({
       priceLineVisible: cfg?.visible ?? true,
-      priceLineColor: cfg ? resolveColor(cfg.color) : css("--accent-bg-default"),
+      priceLineColor: cfg?.followCandleColor ? candleColor : (cfg ? resolveColor(cfg.color) : css("--accent-bg-default")),
       priceLineWidth: (cfg?.lineWidth ?? 1) as 1 | 2 | 3 | 4,
       priceLineStyle: cfg?.lineStyle ?? LineStyle.Dashed,
     });
@@ -899,13 +920,13 @@ export function ChartWidget({
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !chartReady) return;
-    const accent = rgba("--accent-bg-default-rgb", 0.4);
-    const accentBg = css("--accent-bg-default");
+    const baseColor = crosshairConfig?.color ? resolveColor(crosshairConfig.color) : css("--accent-bg-default");
+    const lineColor = crosshairConfig?.color ? resolveColor(crosshairConfig.color) : rgba("--accent-bg-default-rgb", 0.4);
     chart.applyOptions({
       crosshair: {
         mode: crosshairConfig?.mode === 1 ? CrosshairMode.Magnet : CrosshairMode.Normal,
-        vertLine: { color: accent, labelBackgroundColor: accentBg, style: crosshairConfig?.vStyle ?? LineStyle.Solid },
-        horzLine: { color: accent, labelBackgroundColor: accentBg, style: crosshairConfig?.hStyle ?? LineStyle.Solid },
+        vertLine: { color: lineColor, labelBackgroundColor: baseColor, style: crosshairConfig?.vStyle ?? LineStyle.Solid },
+        horzLine: { color: lineColor, labelBackgroundColor: baseColor, style: crosshairConfig?.hStyle ?? LineStyle.Solid },
       },
     });
   }, [crosshairConfig, chartReady, theme]);
