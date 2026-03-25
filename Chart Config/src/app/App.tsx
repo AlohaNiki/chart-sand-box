@@ -25,128 +25,19 @@ import {
 
 /** Default price lines (used on first visit and on Reset) */
 const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
-  {
-    id: "buy-order",
-    label: "Buy Order",
-    price: 63861.97,
-    color: "--positive-bg-default",
-    labelColor: "--surface-elevation-3",
-    labelTextColor: "--positive-text-and-icons",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
-  {
-    id: "take-profit",
-    label: "Take Profit",
-    price: 74804.57,
-    color: "--positive-bg-default",
-    labelColor: "--positive-bg-default",
-    labelTextColor: "--positive-over",
-    lineWidth: 1,
-    lineStyle: 2,
-    visible: true,
-  },
-  {
-    id: "stop-loss",
-    label: "Stop Loss",
-    price: 63079.93,
-    color: "--negative-bg-default",
-    labelColor: "--negative-bg-default",
-    labelTextColor: "--negative-over",
-    lineWidth: 1,
-    lineStyle: 2,
-    visible: true,
-  },
-  {
-    id: "custom-1",
-    label: "Sell Order",
-    price: 73806.21,
-    color: "--negative-bg-default",
-    labelColor: "--surface-elevation-3",
-    labelTextColor: "--negative-text-and-icons",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
-  {
-    id: "custom-2",
-    label: "AO 1",
-    price: 66351.41,
-    color: "--contrast-tertiary",
-    labelColor: "--surface-elevation-3",
-    labelTextColor: "--contrast-primary",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
-  {
-    id: "custom-3",
-    label: "AO 2",
-    price: 65778.66,
-    color: "--contrast-tertiary",
-    labelColor: "--surface-elevation-3",
-    labelTextColor: "--contrast-primary",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
-  {
-    id: "custom-5",
-    label: "AO 3",
-    price: 65188.31,
-    color: "--contrast-tertiary",
-    labelColor: "--surface-elevation-3",
-    labelTextColor: "--contrast-primary",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
-  {
-    id: "liquidation",
-    label: "Liquidation",
-    price: 62356.52,
-    color: "--warning-bg-default",
-    labelColor: "--warning-bg-default",
-    labelTextColor: "--warning-over",
-    lineWidth: 1,
-    lineStyle: 0,
-    visible: true,
-  },
+  { id: "custom-1", label: "Liq. Price", price: 61502.53, color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",                lineWidth: 1,   lineStyle: 0, visible: true, showPnl: false },
+  { id: "custom-2", label: "TP",         price: 98324.98, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over",               lineWidth: 0.5, lineStyle: 3, visible: true },
+  { id: "custom-3", label: "SL",         price: 94597.55, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over",               lineWidth: 0.5, lineStyle: 3, visible: true },
+  { id: "custom-4", label: "AO",         price: 90553,    color: "--contrast-secondary",  labelColor: "--surface-elevation-3", labelTextColor: "--contrast-primary",            lineWidth: 0.5, lineStyle: 4, visible: true },
+  { id: "custom-5", label: "Open Long",  price: 86895.97, color: "--positive-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--positive-text-and-icons",     lineWidth: 0.5, lineStyle: 4, visible: true },
+  { id: "custom-6", label: "Open Short", price: 82524.48, color: "--negative-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--negative-text-and-icons",     lineWidth: 0.5, lineStyle: 4, visible: true },
+  { id: "custom-7", label: "Entry",      price: 78501.54, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
+  { id: "custom-8", label: "Close",      price: 74937.98, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
 ];
 
 
 /** Default trade orders shown on first visit / after Reset */
-const DEFAULT_ORDERS: TradeOrder[] = [
-  {
-    id: "order-1", time: 1761004800, price: 62500, type: "buy",
-    closePrice: 74800, leverage: 10, amount: 0.1, volume: 625,
-    pnl: 1230, pnlPercent: 19.7, transactionId: "10234521",
-    operation: "Long", takeProfit: 78000, stopLoss: 59000,
-    openTime: 1761004800, closeTime: 1761264000,
-  },
-  {
-    id: "order-2", time: 1763942400, price: 96000, type: "sell",
-    closePrice: 87500, leverage: 5, amount: 0.1, volume: 960,
-    pnl: 850, pnlPercent: 8.9, transactionId: "10456783",
-    operation: "Short", takeProfit: 85000, stopLoss: 101000,
-    openTime: 1763942400, closeTime: 1764115200,
-  },
-  {
-    id: "order-3", time: 1766534400, price: 101000, type: "sell",
-    closePrice: 95200, leverage: 5, amount: 0.05, volume: 505,
-    pnl: 290, pnlPercent: 5.7, transactionId: "10589341",
-    operation: "Short", takeProfit: 93000, stopLoss: 106000,
-    openTime: 1766534400, closeTime: 1767225600,
-  },
-  {
-    id: "order-4", time: 1770076800, price: 97500, type: "buy",
-    closePrice: 84000, leverage: 10, amount: 0.1, volume: 975,
-    pnl: -1350, pnlPercent: -13.8, transactionId: "10712984",
-    operation: "Long", takeProfit: 110000, stopLoss: 90000,
-    openTime: 1770076800, closeTime: 1771286400,
-  },
-];
+const DEFAULT_ORDERS: TradeOrder[] = [];
 
 /** Historical trades shown in the History tab (not on the main chart) */
 const DEFAULT_HISTORY_ORDERS: TradeOrder[] = [
@@ -312,12 +203,12 @@ export default function App() {
   // ── History tab ───────────────────────────────────────────────────────────
   const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">(() => lsGet(STORAGE_KEYS.sidebarTab, "orders"));
   const [currentPriceLineConfig, setCurrentPriceLineConfig] = useState<CurrentPriceLineConfig>(() =>
-    lsGet(STORAGE_KEYS.currentPriceLine, { visible: true, color: "--accent-bg-default", lineWidth: 1, lineStyle: 2 })
+    lsGet(STORAGE_KEYS.currentPriceLine, { visible: true, color: "--accent-bg-default", lineWidth: 0.5, lineStyle: 0, followCandleColor: true })
   );
   const [crosshairConfig, setCrosshairConfig] = useState<CrosshairConfig>(() =>
-    lsGet(STORAGE_KEYS.crosshair, { mode: 0, hStyle: 0, vStyle: 0, color: "--accent-bg-default" })
+    lsGet(STORAGE_KEYS.crosshair, { mode: 0, hStyle: 0, vStyle: 0, color: "--accent-transparent" })
   );
-  const [gridStyle, setGridStyle] = useState<number>(() => lsGet(STORAGE_KEYS.gridStyle, 0));
+  const [gridStyle, setGridStyle] = useState<number>(() => lsGet(STORAGE_KEYS.gridStyle, 4));
   const [showGrid, setShowGrid] = useState<boolean>(() => lsGet(STORAGE_KEYS.showGrid, true));
   const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(() => {
     const stored = lsGet<TradeOrder[]>(STORAGE_KEYS.historyOrders, []);
@@ -400,10 +291,14 @@ export default function App() {
     if (!window.confirm("Reset all price lines and chart settings to defaults? This cannot be undone.")) return;
     setImportMessage(null);
     setPriceLines(DEFAULT_PRICE_LINES);
-    setChartBg("--surface-elevation-1");
-    setGridColor("--contrast-quaternary");
     setOrders(DEFAULT_ORDERS);
     setShowOrders(true);
+    setChartBg("--surface-elevation-1");
+    setGridColor("--contrast-quaternary");
+    setGridStyle(4);
+    setShowGrid(true);
+    setCurrentPriceLineConfig({ visible: true, color: "--accent-bg-default", lineWidth: 0.5, lineStyle: 0, followCandleColor: true });
+    setCrosshairConfig({ mode: 0, hStyle: 0, vStyle: 0, color: "--accent-transparent" });
   };
 
   const handleAddLevel = () => {
