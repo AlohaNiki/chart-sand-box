@@ -349,12 +349,17 @@ export function TradeChartWidget({ order, interval, onIntervalChange, onPricesRe
         const actualExit  = closeCandle?.close ?? order.closePrice;
 
         // Entry price line
+        const lineColor = css("--contrast-secondary");
+        const labelBg   = css("--contrast-primary");
+        const labelText = css("--surface-canvas");
         series.createPriceLine({
           price: actualEntry,
-          color: isLong ? "#22c55e" : "#ef4444",
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
+          color: lineColor,
+          lineWidth: 0.5,
+          lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
+          axisLabelColor: labelBg,
+          axisLabelTextColor: labelText,
           title: "Entry",
         });
 
@@ -362,10 +367,12 @@ export function TradeChartWidget({ order, interval, onIntervalChange, onPricesRe
         if (actualExit !== undefined) {
           series.createPriceLine({
             price: actualExit,
-            color: isLong ? "#ef4444" : "#22c55e",
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
+            color: lineColor,
+            lineWidth: 0.5,
+            lineStyle: LineStyle.Solid,
             axisLabelVisible: true,
+            axisLabelColor: labelBg,
+            axisLabelTextColor: labelText,
             title: "Exit",
           });
         }
