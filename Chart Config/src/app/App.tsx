@@ -26,14 +26,11 @@ import {
 
 /** Default price lines (used on first visit and on Reset) */
 const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
-  { id: "custom-1", label: "Liq. Price", price: 61502.53, color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",                lineWidth: 1,   lineStyle: 0, visible: true, showPnl: false },
-  { id: "custom-2", label: "TP",         price: 98324.98, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over",               lineWidth: 1,   lineStyle: 3, visible: true },
-  { id: "custom-3", label: "SL",         price: 94597.55, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over",               lineWidth: 1,   lineStyle: 3, visible: true },
-  { id: "custom-4", label: "AO",         price: 90553,    color: "--contrast-secondary",  labelColor: "--surface-elevation-3", labelTextColor: "--contrast-primary",            lineWidth: 1,   lineStyle: 2, visible: true },
-  { id: "custom-5", label: "Open Long",  price: 86895.97, color: "--positive-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--positive-text-and-icons",     lineWidth: 1,   lineStyle: 2, visible: true },
-  { id: "custom-6", label: "Open Short", price: 82524.48, color: "--negative-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--negative-text-and-icons",     lineWidth: 1,   lineStyle: 2, visible: true },
-  { id: "custom-7", label: "Entry",      price: 78501.54, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
-  { id: "custom-8", label: "Close",      price: 74937.98, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",              lineWidth: 0.5, lineStyle: 0, visible: true },
+  { id: "custom-1", label: "Liq. Price",   price: 64200,    color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",  lineWidth: 1, lineStyle: 0, visible: true },
+  { id: "custom-2", label: "Open Long",    price: 78500,    color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "+$1,840 (7.1%)" },
+  { id: "custom-3", label: "Open Short",   price: 91800,    color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "-$1,260 (-4.2%)" },
+  { id: "custom-4", label: "Limit Long",   price: 74000,    color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 2, visible: true },
+  { id: "custom-5", label: "Limit Short",  price: 96500,    color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 2, visible: true },
 ];
 
 
@@ -441,13 +438,8 @@ export default function App() {
 
   // ── Price lines shown on chart depend on active sidebar tab + chart mode ─────
   const isAdvanced = chartMode === "advanced";
-  const advancedHidden = (p: { label: string }) => p.label === "TP" || p.label === "SL";
-  const effectivePriceLines = sidebarTab === "history"
-    ? []
-    : isAdvanced
-      ? priceLines.filter(p => !advancedHidden(p))
-      : priceLines;
-  const sidebarPriceLines = isAdvanced ? priceLines.filter(p => !advancedHidden(p)) : priceLines;
+  const effectivePriceLines = sidebarTab === "history" ? [] : priceLines;
+  const sidebarPriceLines = priceLines;
 
   const LINE_STYLE_SVG = [
     { value: 0, label: "Solid",  dash: undefined as string | undefined },

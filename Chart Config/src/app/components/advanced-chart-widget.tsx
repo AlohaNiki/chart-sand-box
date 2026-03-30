@@ -363,7 +363,7 @@ export function AdvancedChartWidget({
         try {
           existing
             .setPrice(pl.price)
-            .setText(pl.label)
+            .setText(pl.pnlText ? `${pl.label}   ${pl.pnlText}` : pl.label)
             .setLineColor(lineColor)
             .setLineStyle(toTVLineStyle(pl.lineStyle))
             .setLineWidth(pl.lineWidth)
@@ -371,7 +371,6 @@ export function AdvancedChartWidget({
             .setBodyBackgroundColor(labelBg)
             .setBodyBorderColor(labelBg)
             .setBodyTextColor(labelText)
-            .setExtendLeft(false)
             .setQuantity("")
             .setQuantityBackgroundColor("rgba(0,0,0,0)")
             .setQuantityBorderColor("rgba(0,0,0,0)")
@@ -382,7 +381,7 @@ export function AdvancedChartWidget({
         try {
           const line = chart.createOrderLine({ disableUndo: true })
             .setPrice(pl.price)
-            .setText(pl.label)
+            .setText(pl.pnlText ? `${pl.label}   ${pl.pnlText}` : pl.label)
             .setLineColor(lineColor)
             .setLineStyle(toTVLineStyle(pl.lineStyle))
             .setLineWidth(pl.lineWidth)
@@ -390,7 +389,6 @@ export function AdvancedChartWidget({
             .setBodyBackgroundColor(labelBg)
             .setBodyBorderColor(labelBg)
             .setBodyTextColor(labelText)
-            .setExtendLeft(false)
             .setQuantity("")
             .setQuantityBackgroundColor("rgba(0,0,0,0)")
             .setQuantityBorderColor("rgba(0,0,0,0)")

@@ -381,6 +381,7 @@ export interface PriceLineConfig {
   lineStyle: number;
   visible: boolean;
   showPnl?: boolean;
+  pnlText?: string;
 }
 
 interface IndicatorState {
