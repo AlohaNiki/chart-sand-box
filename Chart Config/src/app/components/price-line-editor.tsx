@@ -361,6 +361,7 @@ interface PriceLineEditorProps {
   onDuplicate: (config: PriceLineConfig) => void;
   onMove: (dragIndex: number, hoverIndex: number) => void;
   canDelete: boolean;
+  maxStyles?: number;
 }
 
 export function PriceLineEditor({
@@ -371,6 +372,7 @@ export function PriceLineEditor({
   onDuplicate,
   onMove,
   canDelete,
+  maxStyles,
 }: PriceLineEditorProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
@@ -588,7 +590,7 @@ export function PriceLineEditor({
           <div className="flex flex-col gap-[6px]">
             <label style={labelStyle}>Style</label>
             <div className="flex gap-[4px]">
-              {LINE_STYLE_OPTIONS.map((s) => {
+              {(maxStyles ? LINE_STYLE_OPTIONS.slice(0, maxStyles) : LINE_STYLE_OPTIONS).map((s) => {
                 const active = config.lineStyle === s.value;
                 const dashArray =
                   s.value === 0 ? undefined :

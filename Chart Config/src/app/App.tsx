@@ -439,8 +439,16 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Price lines shown on chart depend on active sidebar tab ───────────────
-  const effectivePriceLines = sidebarTab === "history" ? [] : priceLines;
+  // ── Price lines shown on chart depend on active sidebar tab + chart mode ─────
+  const isAdvanced = chartMode === "advanced";
+  const advancedHidden = (p: { label: string }) => p.label === "TP" || p.label === "SL";
+  const effectivePriceLines = sidebarTab === "history"
+    ? []
+    : isAdvanced
+      ? priceLines.filter(p => !advancedHidden(p))
+      : priceLines;
+  const sidebarPriceLines = isAdvanced ? priceLines.filter(p => !advancedHidden(p)) : priceLines;
+
   const LINE_STYLE_SVG = [
     { value: 0, label: "Solid",  dash: undefined as string | undefined },
     { value: 1, label: "Dot",    dash: "2,2" },
@@ -448,6 +456,8 @@ export default function App() {
     { value: 3, label: "Large",  dash: "7,3" },
     { value: 4, label: "Sparse", dash: "2,6" },
   ];
+  // Advanced tab only supports 3 line styles (TV library limitation)
+  const displayLineStyles = isAdvanced ? LINE_STYLE_SVG.slice(0, 3) : LINE_STYLE_SVG;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -650,7 +660,7 @@ export default function App() {
                         <ColorTokenPicker value={gridColor} onChange={setGridColor} />
                       </div>
                       <div className="flex gap-[4px]" style={{ opacity: showGrid ? 1 : 0.4, pointerEvents: showGrid ? "auto" : "none" }}>
-                        {LINE_STYLE_SVG.map((s) => {
+                        {displayLineStyles.map((s) => {
                           const active = gridStyle === s.value;
                           return (
                             <button key={s.value} onClick={() => setGridStyle(s.value)} title={s.label}
@@ -688,7 +698,7 @@ export default function App() {
                     <div className="flex flex-col gap-[6px]">
                       <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Style</span>
                       <div className="flex gap-[4px]">
-                        {LINE_STYLE_SVG.map((s) => {
+                        {displayLineStyles.map((s) => {
                           const active = currentPriceLineConfig.lineStyle === s.value;
                           return (
                             <button key={s.value} onClick={() => setCurrentPriceLineConfig(c => ({ ...c, lineStyle: s.value }))} title={s.label}
@@ -736,7 +746,7 @@ export default function App() {
                     <div className="flex flex-col gap-[6px]">
                       <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Horizontal Line</span>
                       <div className="flex gap-[4px]">
-                        {LINE_STYLE_SVG.map((s) => {
+                        {displayLineStyles.map((s) => {
                           const active = crosshairConfig.hStyle === s.value;
                           return (
                             <button key={s.value} onClick={() => setCrosshairConfig(c => ({ ...c, hStyle: s.value }))} title={s.label}
@@ -753,7 +763,7 @@ export default function App() {
                     <div className="flex flex-col gap-[6px]">
                       <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>Vertical Line</span>
                       <div className="flex gap-[4px]">
-                        {LINE_STYLE_SVG.map((s) => {
+                        {displayLineStyles.map((s) => {
                           const active = crosshairConfig.vStyle === s.value;
                           return (
                             <button key={s.value} onClick={() => setCrosshairConfig(c => ({ ...c, vStyle: s.value }))} title={s.label}
@@ -777,7 +787,7 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Price Lines</h4>
                     <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
-                      {priceLines.filter((p) => p.visible).length}/{priceLines.length} visible
+                      {sidebarPriceLines.filter((p) => p.visible).length}/{sidebarPriceLines.length} visible
                     </span>
                   </div>
 
@@ -813,8 +823,8 @@ export default function App() {
                   )}
 
                   {/* Draggable list */}
-                  {priceLines.map((config, index) => (
-                    <PriceLineEditor key={config.id} index={index} config={config} onChange={handleLineChange} onDelete={handleDeleteLine} onDuplicate={handleDuplicateLine} onMove={handleMoveLine} canDelete={true} />
+                  {sidebarPriceLines.map((config, index) => (
+                    <PriceLineEditor key={config.id} index={index} config={config} onChange={handleLineChange} onDelete={handleDeleteLine} onDuplicate={handleDuplicateLine} onMove={handleMoveLine} canDelete={true} maxStyles={isAdvanced ? 3 : undefined} />
                   ))}
 
                   {/* Add Level button */}
@@ -828,7 +838,7 @@ export default function App() {
                   {/* LineStyle reference */}
                   <div className="flex flex-col gap-[6px] px-[2px]">
                     <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", opacity: 0.6 }}>Line styles</span>
-                    {LINE_STYLE_SVG.map((s) => (
+                    {displayLineStyles.map((s) => (
                       <div key={s.value} className="flex items-center gap-[10px]">
                         <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Mono', ui-monospace, monospace", fontSize: "var(--text-label)", width: 12, flexShrink: 0, opacity: 0.6 }}>{s.value}</span>
                         <svg width="100%" height="8" viewBox="0 0 160 8" preserveAspectRatio="none">
