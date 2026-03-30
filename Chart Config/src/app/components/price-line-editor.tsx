@@ -661,6 +661,52 @@ export function PriceLineEditor({
             />
             Show PnL
           </label>
+
+          <div className="h-px" style={{ background: "var(--border)" }} />
+
+          {/* Take Profit */}
+          <div className="flex flex-col gap-[6px]">
+            <label className="flex items-center gap-[8px] cursor-pointer" style={{ ...labelStyle, color: "var(--foreground)" }}>
+              <input
+                type="checkbox"
+                checked={config.takeProfit != null}
+                onChange={(e) => onChange({ ...config, takeProfit: e.target.checked ? Math.round(config.price * 1.05) : undefined })}
+                className="cursor-pointer"
+              />
+              Take Profit
+            </label>
+            {config.takeProfit != null && (
+              <input
+                type="number"
+                value={config.takeProfit}
+                onChange={(e) => onChange({ ...config, takeProfit: parseFloat(e.target.value) || 0 })}
+                step={100}
+                style={inputStyle}
+              />
+            )}
+          </div>
+
+          {/* Stop Loss */}
+          <div className="flex flex-col gap-[6px]">
+            <label className="flex items-center gap-[8px] cursor-pointer" style={{ ...labelStyle, color: "var(--foreground)" }}>
+              <input
+                type="checkbox"
+                checked={config.stopLoss != null}
+                onChange={(e) => onChange({ ...config, stopLoss: e.target.checked ? Math.round(config.price * 0.95) : undefined })}
+                className="cursor-pointer"
+              />
+              Stop Loss
+            </label>
+            {config.stopLoss != null && (
+              <input
+                type="number"
+                value={config.stopLoss}
+                onChange={(e) => onChange({ ...config, stopLoss: parseFloat(e.target.value) || 0 })}
+                step={100}
+                style={inputStyle}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

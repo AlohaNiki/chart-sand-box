@@ -438,8 +438,22 @@ export default function App() {
 
   // ── Price lines shown on chart depend on active sidebar tab + chart mode ─────
   const isAdvanced = chartMode === "advanced";
-  const effectivePriceLines = sidebarTab === "history" ? [] : priceLines;
   const sidebarPriceLines = priceLines;
+
+  function expandWithTpSl(lines: PriceLineConfig[]): PriceLineConfig[] {
+    return lines.flatMap((pl) => {
+      const result: PriceLineConfig[] = [pl];
+      if (pl.takeProfit != null && pl.visible) {
+        result.push({ id: `${pl.id}-tp`, label: "TP", price: pl.takeProfit, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 2, visible: true });
+      }
+      if (pl.stopLoss != null && pl.visible) {
+        result.push({ id: `${pl.id}-sl`, label: "SL", price: pl.stopLoss, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 2, visible: true });
+      }
+      return result;
+    });
+  }
+
+  const effectivePriceLines = sidebarTab === "history" ? [] : expandWithTpSl(priceLines);
 
   const LINE_STYLE_SVG = [
     { value: 0, label: "Solid",  dash: undefined as string | undefined },

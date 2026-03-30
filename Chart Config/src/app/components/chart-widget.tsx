@@ -382,6 +382,8 @@ export interface PriceLineConfig {
   visible: boolean;
   showPnl?: boolean;
   pnlText?: string;
+  takeProfit?: number;
+  stopLoss?: number;
 }
 
 interface IndicatorState {
