@@ -580,7 +580,20 @@ export default function App() {
                   onCancelPending={() => setPendingOrderType(null)}
                 />
               ) : (
-                <AdvancedChartWidget theme={theme} />
+                <AdvancedChartWidget
+                  theme={theme}
+                  chartBg={chartBg}
+                  gridColor={gridColor}
+                  gridStyle={gridStyle}
+                  showGrid={showGrid}
+                  priceLines={effectivePriceLines}
+                  orders={orders}
+                  showOrders={showOrders}
+                  onOrderClick={setSelectedOrder}
+                  currentPriceLineConfig={currentPriceLineConfig}
+                  crosshairConfig={crosshairConfig}
+                  onLivePrice={(p) => { livePriceRef.current = p; }}
+                />
               )}
             </div>
           </div>
