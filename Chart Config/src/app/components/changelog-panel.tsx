@@ -10,6 +10,19 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.21",
+    date: "Mar 30, 2026",
+    title: "Advanced Chart — TradingView Charting Library",
+    items: [
+      "Added Advanced tab powered by TradingView Charting Library (self-hosted)",
+      "Binance REST + WebSocket datafeed: BTC/USDT live candles on all resolutions",
+      "Full TV toolbar: indicators, drawing tools, timeframes, screenshot",
+      "Library bundled as local @shared/tradingview npm package for clean imports",
+      "Vite alias + CORS headers configured for blob-iframe bundle loading",
+      "Default chart interval changed to 1D",
+    ],
+  },
+  {
     version: "0.20",
     date: "Mar 25, 2026",
     title: "Chart tab, settings persistence & UX polish",
