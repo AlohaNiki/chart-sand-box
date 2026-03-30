@@ -312,7 +312,7 @@ export function AdvancedChartWidget({
         ? css("--positive-bg-default") // will be updated live via theme
         : resolveTokenColor(currentPriceLineConfig.color);
 
-      overrides["mainSeriesProperties.priceLineVisible"] = currentPriceLineConfig.visible;
+      overrides["mainSeriesProperties.showPriceLine"] = currentPriceLineConfig.visible;
       overrides["mainSeriesProperties.priceLineWidth"] = currentPriceLineConfig.lineWidth;
       overrides["mainSeriesProperties.priceLineColor"] = priceLineColor;
     }
@@ -363,16 +363,18 @@ export function AdvancedChartWidget({
         try {
           existing
             .setPrice(pl.price)
-            .setText(pl.label)
+            .setText("")
             .setLineColor(lineColor)
             .setLineStyle(toTVLineStyle(pl.lineStyle))
             .setLineWidth(pl.lineWidth)
-            .setBodyBackgroundColor(labelBg)
-            .setBodyBorderColor(labelBg)
-            .setBodyTextColor(labelText)
-            .setQuantity("")
-            .setQuantityBackgroundColor("rgba(0,0,0,0)")
-            .setQuantityBorderColor("rgba(0,0,0,0)")
+            .setBodyBackgroundColor("rgba(0,0,0,0)")
+            .setBodyBorderColor("rgba(0,0,0,0)")
+            .setBodyTextColor("rgba(0,0,0,0)")
+            .setQuantity(pl.label)
+            .setQuantityFont("bold 11px 'Inter Display', sans-serif")
+            .setQuantityBackgroundColor(labelBg)
+            .setQuantityBorderColor(labelBg)
+            .setQuantityTextColor(labelText)
             .setCancelButtonBackgroundColor("rgba(0,0,0,0)")
             .setCancelButtonBorderColor("rgba(0,0,0,0)");
         } catch { /* ignore if removed */ }
@@ -380,17 +382,18 @@ export function AdvancedChartWidget({
         try {
           const line = chart.createOrderLine({ disableUndo: true })
             .setPrice(pl.price)
-            .setText(pl.label)
+            .setText("")
             .setLineColor(lineColor)
             .setLineStyle(toTVLineStyle(pl.lineStyle))
             .setLineWidth(pl.lineWidth)
-            .setBodyFont("bold 11px 'Inter Display', sans-serif")
-            .setBodyBackgroundColor(labelBg)
-            .setBodyBorderColor(labelBg)
-            .setBodyTextColor(labelText)
-            .setQuantity("")
-            .setQuantityBackgroundColor("rgba(0,0,0,0)")
-            .setQuantityBorderColor("rgba(0,0,0,0)")
+            .setBodyBackgroundColor("rgba(0,0,0,0)")
+            .setBodyBorderColor("rgba(0,0,0,0)")
+            .setBodyTextColor("rgba(0,0,0,0)")
+            .setQuantity(pl.label)
+            .setQuantityFont("bold 11px 'Inter Display', sans-serif")
+            .setQuantityBackgroundColor(labelBg)
+            .setQuantityBorderColor(labelBg)
+            .setQuantityTextColor(labelText)
             .setEditable(false)
             .setCancellable(false)
             .setCancelButtonBackgroundColor("rgba(0,0,0,0)")
