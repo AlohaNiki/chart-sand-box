@@ -5,6 +5,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { ChartWidget, type PriceLineConfig, type TradeOrder, type CurrentPriceLineConfig, type CrosshairConfig } from "./components/chart-widget";
 
 import { KlineChartWidget } from "./components/klinechart-widget";
+import { AdvancedChartWidget } from "./components/advanced-chart-widget";
 import { OrderDetailModal } from "./components/order-detail-modal";
 import { TradeChartModal } from "./components/trade-chart-modal";
 import { ChangelogPanel } from "./components/changelog-panel";
@@ -198,7 +199,7 @@ export default function App() {
   const [pendingOrderType, setPendingOrderType] = useState<"buy" | "sell" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [chartMode, setChartMode] = useState<"lightweight" | "klinechart">(() => lsGet(STORAGE_KEYS.chartMode, "lightweight"));
+  const [chartMode, setChartMode] = useState<"lightweight" | "klinechart" | "advanced">(() => lsGet(STORAGE_KEYS.chartMode, "lightweight"));
 
   // ── History tab ───────────────────────────────────────────────────────────
   const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">(() => lsGet(STORAGE_KEYS.sidebarTab, "orders"));
@@ -482,7 +483,7 @@ export default function App() {
             className="flex items-center gap-[2px] rounded-[var(--radius-sm)] p-[2px]"
             style={{ background: "var(--secondary)" }}
           >
-            {(["lightweight", "klinechart"] as const).map((mode) => (
+            {(["lightweight", "klinechart", "advanced"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setChartMode(mode)}
@@ -495,7 +496,7 @@ export default function App() {
                   fontWeight: chartMode === mode ? "600" : "400",
                 }}
               >
-                {mode === "lightweight" ? "Lightweight" : "KLineChart"}
+                {mode === "lightweight" ? "Lightweight" : mode === "klinechart" ? "KLineChart" : "Advanced"}
               </button>
             ))}
           </div>
@@ -565,7 +566,7 @@ export default function App() {
                   gridStyle={gridStyle}
                   showGrid={showGrid}
                 />
-              ) : (
+              ) : chartMode === "klinechart" ? (
                 <KlineChartWidget
                   priceLines={effectivePriceLines}
                   theme={theme}
@@ -578,6 +579,8 @@ export default function App() {
                   onOrderPlace={handleOrderPlace}
                   onCancelPending={() => setPendingOrderType(null)}
                 />
+              ) : (
+                <AdvancedChartWidget theme={theme} />
               )}
             </div>
           </div>

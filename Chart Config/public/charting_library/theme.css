@@ -1,0 +1,143 @@
+.theme-dark:root {
+  /* var(--surface-elevation-1) */
+  --tv-color-platform-background: rgba(15, 15, 17, 1);
+  /* var(--surface-elevation-1) */
+  --tv-color-pane-background: rgba(15, 15, 17, 1);
+  /* var(--surface-elevation-2) */
+  --tv-color-toolbar-button-background-hover: rgba(24, 24, 26, 1);
+  /* var(--surface-elevation-2) */
+  --tv-color-toolbar-button-background-expanded: rgba(24, 24, 26, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-background-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-background-active-hover: rgba(71, 99, 240, 1);
+  /* var(--contrast-primary) */
+  --tv-color-toolbar-button-text: rgba(246, 247, 255, 1);
+  /* var(--contrast-primary) */
+  --tv-color-toolbar-button-text-hover: rgba(246, 247, 255, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-text-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-text-active-hover: rgba(71, 99, 240, 1);
+  /* var(--accent-over) */
+  --tv-color-item-active-text: rgba(255, 255, 255, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-toggle-button-background-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-hover) */
+  --tv-color-toolbar-toggle-button-background-active-hover: rgba(
+    85,
+    120,
+    241,
+    1
+  );
+  /* var(--contrast-tertiary) */
+  --tv-color-toolbar-divider-background: rgba(246, 247, 255, 0.25);
+  /* var(--contrast-tertiary) */
+  --tv-color-toolbar-save-layout-loader: rgba(246, 247, 255, 0.25);
+  /* var(--surface-elevation-2) */
+  --tv-color-popup-background: rgba(24, 24, 26, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text: rgba(246, 247, 255, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text-hover: rgba(246, 247, 255, 1);
+  /* var(--accent-bg-hover) */
+  --tv-color-popup-element-background-hover: rgba(85, 120, 241, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-divider-background: rgba(246, 247, 255, 0.25);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-secondary-text: rgba(246, 247, 255, 0.25);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-hint-text: rgba(246, 247, 255, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text-active: rgba(246, 247, 255, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-popup-element-background-active: rgba(71, 99, 240, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-toolbox-text: rgba(246, 247, 255, 0.25);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-toolbox-text-hover: rgba(246, 247, 255, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-popup-element-toolbox-text-active-hover: rgba(71, 99, 240, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-toolbox-background-hover: rgba(246, 247, 255, 0.25);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-toolbox-background-active-hover: rgba(
+    246,
+    247,
+    255,
+    1
+  );
+}
+.theme-dark:root .chart-container-border,
+.theme-dark:root .loading-indicator {
+  background-color: rgba(15, 15, 17, 1) !important;
+}
+:root:not(.theme-dark) {
+  /* var(--surface-elevation-1) */
+  --tv-color-platform-background: rgba(255, 255, 255, 1);
+  /* var(--surface-elevation-1) */
+  --tv-color-pane-background: rgba(255, 255, 255, 1);
+  /* var(--surface-elevation-2) */
+  --tv-color-toolbar-button-background-hover: rgba(250, 250, 250, 1);
+  /* var(--surface-elevation-2) */
+  --tv-color-toolbar-button-background-expanded: rgba(250, 250, 250, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-background-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-background-active-hover: rgba(71, 99, 240, 1);
+  /* var(--contrast-primary) */
+  --tv-color-toolbar-button-text: rgba(22, 26, 64, 1);
+  /* var(--contrast-primary) */
+  --tv-color-toolbar-button-text-hover: rgba(22, 26, 64, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-text-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-button-text-active-hover: rgba(71, 99, 240, 1);
+  /* var(--accent-over) */
+  --tv-color-item-active-text: rgba(255, 255, 255, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-toolbar-toggle-button-background-active: rgba(71, 99, 240, 1);
+  /* var(--accent-bg-hover) */
+  --tv-color-toolbar-toggle-button-background-active-hover: rgba(
+    85,
+    120,
+    241,
+    1
+  );
+  /* var(--contrast-tertiary) */
+  --tv-color-toolbar-divider-background: rgba(22, 26, 64, 0.3);
+  /* var(--contrast-tertiary) */
+  --tv-color-toolbar-save-layout-loader: rgba(22, 26, 64, 0.3);
+  /* var(--surface-elevation-2) */
+  --tv-color-popup-background: rgba(250, 250, 250, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text: rgba(22, 26, 64, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text-hover: rgba(22, 26, 64, 1);
+  /* var(--accent-bg-hover) */
+  --tv-color-popup-element-background-hover: rgba(85, 120, 241, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-divider-background: rgba(22, 26, 64, 0.3);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-secondary-text: rgba(22, 26, 64, 0.3);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-hint-text: rgba(22, 26, 64, 1);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-text-active: rgba(22, 26, 64, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-popup-element-background-active: rgba(71, 99, 240, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-toolbox-text: rgba(22, 26, 64, 0.3);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-toolbox-text-hover: rgba(22, 26, 64, 1);
+  /* var(--accent-bg-default) */
+  --tv-color-popup-element-toolbox-text-active-hover: rgba(71, 99, 240, 1);
+  /* var(--contrast-tertiary) */
+  --tv-color-popup-element-toolbox-background-hover: rgba(22, 26, 64, 0.3);
+  /* var(--contrast-primary) */
+  --tv-color-popup-element-toolbox-background-active-hover: rgba(22, 26, 64, 1);
+}
+:root:not(.theme-dark) .chart-container-border,
+:root:not(.theme-dark) .loading-indicator {
+  background-color: rgba(255, 255, 255, 1) !important;
+}

@@ -1,0 +1,8 @@
+{
+  "name": "@shared/tradingview",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./build/charting_library.esm.js",
+  "types": "./build/charting_library.d.ts",
+  "sideEffects": false
+}
