@@ -1,61 +1,47 @@
-**Add your own guidelines here**
-<!--
+# Правила для AI — Chart Console
 
-System Guidelines
+> Полный контекст проекта: смотри `CLAUDE.md` в корне репозитория.
 
-Use this file to provide the AI with rules and guidelines you want it to follow.
-This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs
+---
 
-TIP: More context isn't always better. It can confuse the LLM. Try and add the most important rules you need
+## Общие правила
 
-# General guidelines
+- Использовать **flexbox / grid** для лейаутов; абсолютное позиционирование — только при необходимости
+- Держать компоненты маленькими; хелперы выносить в отдельные файлы
+- Не дублировать стейт — вычислять производные данные через `useMemo` или inline
+- Не использовать `any` в TypeScript без явного комментария
 
-Any general rules you want the AI to follow.
-For example:
+---
 
-* Only use absolute positioning when necessary. Opt for responsive and well structured layouts that use flexbox and grid by default
-* Refactor code as you go to keep code clean
-* Keep file sizes small and put helper functions and components in their own files.
+## Дизайн-система
 
---------------
+- Все цвета — через **CSS-переменные** из `src/styles/theme.css`; никогда не хардкодить hex/rgb
+- Семантические токены: `--positive-bg-default` (зелёный), `--negative-bg-default` (красный), `--warning-bg-default` (жёлтый), `--accent-bg-default` (синий)
+- Поверхности: `--surface-canvas`, `--surface-elevation-1/2/3`, `--card-bg-default`
+- Суффиксы состояний: `-default`, `-hover`, `-active`, `-inactive`
+- Tailwind — для spacing, typography, layout; токены — для цветов и теней
 
-# Design system guidelines
-Rules for how the AI should make generations look like your company's design system
+---
 
-Additionally, if you select a design system to use in the prompt box, you can reference
-your design system's components, tokens, variables and components.
-For example:
+## Стейт и localStorage
 
-* Use a base font-size of 14px
-* Date formats should always be in the format “Jun 10”
-* The bottom toolbar should only ever have a maximum of 4 items
-* Never use the floating action button with the bottom toolbar
-* Chips should always come in sets of 3 or more
-* Don't use a dropdown if there are 2 or fewer options
+- Весь глобальный стейт — в `App.tsx`; пропсы вниз
+- localStorage — через `lsGet` / `lsSet` с ключами из объекта `STORAGE_KEYS`
+- Новые ключи добавлять в `STORAGE_KEYS`, никогда не писать строки напрямую
 
-You can also create sub sections and add more specific details
-For example:
+---
 
+## Графики
 
-## Button
-The Button component is a fundamental interactive element in our design system, designed to trigger actions or navigate
-users through the application. It provides visual feedback and clear affordances to enhance user experience.
+- Lightweight Charts и KLineChart используют `expandWithTpSl()` для TP/SL линий
+- Advanced (TradingView) — нативные `IOrderLineAdapter`, `setExtendLeft(true)` для лейблов слева
+- У каждого графика **свой независимый** список ценовых линий и ключ в localStorage
+- В TV-коллбэках (`onMove`, `onCancel`) — доступ к свежему стейту через **рефы**
 
-### Usage
-Buttons should be used for important actions that users need to take, such as form submissions, confirming choices,
-or initiating processes. They communicate interactivity and should have clear, action-oriented labels.
+---
 
-### Variants
-* Primary Button
-  * Purpose : Used for the main action in a section or page
-  * Visual Style : Bold, filled with the primary brand color
-  * Usage : One primary button per section to guide users toward the most important action
-* Secondary Button
-  * Purpose : Used for alternative or supporting actions
-  * Visual Style : Outlined with the primary color, transparent background
-  * Usage : Can appear alongside a primary button for less important actions
-* Tertiary Button
-  * Purpose : Used for the least important actions
-  * Visual Style : Text-only with no border, using primary color
-  * Usage : For actions that should be available but not emphasized
--->
+## Компоненты UI
+
+- Компоненты из `src/app/components/ui/` — shadcn/Radix, не редактировать без причины
+- Иконки — только `lucide-react`
+- Анимации — `motion` (framer-motion)
