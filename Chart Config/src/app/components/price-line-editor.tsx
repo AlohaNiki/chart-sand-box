@@ -649,18 +649,29 @@ export function PriceLineEditor({
           </button>
 
           {/* Show PnL */}
-          <label
-            className="flex items-center gap-[8px] cursor-pointer"
-            style={{ ...labelStyle, color: "var(--foreground)" }}
-          >
-            <input
-              type="checkbox"
-              checked={config.showPnl ?? false}
-              onChange={(e) => onChange({ ...config, showPnl: e.target.checked })}
-              className="cursor-pointer"
-            />
-            Show PnL
-          </label>
+          <div className="flex flex-col gap-[6px]">
+            <label
+              className="flex items-center gap-[8px] cursor-pointer"
+              style={{ ...labelStyle, color: "var(--foreground)" }}
+            >
+              <input
+                type="checkbox"
+                checked={config.showPnl ?? false}
+                onChange={(e) => onChange({ ...config, showPnl: e.target.checked })}
+                className="cursor-pointer"
+              />
+              Show PnL
+            </label>
+            {(config.showPnl) && (
+              <input
+                type="text"
+                value={config.pnlText ?? ""}
+                onChange={(e) => onChange({ ...config, pnlText: e.target.value || undefined })}
+                placeholder="+$1,840 (7.1%)"
+                style={inputStyle}
+              />
+            )}
+          </div>
 
           <div className="h-px" style={{ background: "var(--border)" }} />
 

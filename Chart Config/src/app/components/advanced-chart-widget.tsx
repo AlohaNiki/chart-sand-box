@@ -9,6 +9,8 @@ import type {
   TradeOrder,
   CurrentPriceLineConfig,
   CrosshairConfig,
+  AdvancedToolbarConfig,
+  AdvancedPriceLinesConfig,
 } from "./chart-widget";
 import { resolveColor } from "./price-line-editor";
 
@@ -154,6 +156,8 @@ function makeDatafeed(onLivePrice?: (p: number) => void) {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface AdvancedChartWidgetProps {
+  toolbarConfig?: AdvancedToolbarConfig;
+  priceLinesConfig?: AdvancedPriceLinesConfig;
   theme?: "dark" | "light";
   chartBg?: string;
   gridColor?: string;
@@ -184,6 +188,8 @@ export function AdvancedChartWidget({
   currentPriceLineConfig,
   crosshairConfig,
   onLivePrice,
+  toolbarConfig,
+  priceLinesConfig,
 }: AdvancedChartWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<IChartingLibraryWidget | null>(null);
@@ -196,12 +202,26 @@ export function AdvancedChartWidget({
   const ordersRef = useRef(orders);
   const showOrdersRef = useRef(showOrders);
   const priceLinesRef = useRef(priceLines);
+  const priceLinesConfigRef = useRef(priceLinesConfig);
 
   useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
   useEffect(() => { onPriceLineChangeRef.current = onPriceLineChange; }, [onPriceLineChange]);
   useEffect(() => { ordersRef.current = orders; }, [orders]);
   useEffect(() => { showOrdersRef.current = showOrders; }, [showOrders]);
   useEffect(() => { priceLinesRef.current = priceLines; }, [priceLines]);
+  useEffect(() => {
+    priceLinesConfigRef.current = priceLinesConfig;
+    if (!chartReadyRef.current) return;
+    // extendLeft / showCancelButton are set at line creation time,
+    // so we must remove all existing main order lines to force recreation.
+    Array.from(orderLinesRef.current.entries()).forEach(([id, line]) => {
+      try { line.remove(); } catch { /* ignore */ }
+      orderLinesRef.current.delete(id);
+    });
+    syncPriceLines();
+  // syncPriceLines is stable; priceLinesConfig is the real trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceLinesConfig]);
 
   // Selected line — click a main order line on chart to reveal its TP/SL
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -261,6 +281,17 @@ export function AdvancedChartWidget({
     const feed = makeDatafeed(onLivePrice);
     datafeedRef.current = feed;
 
+    // Build feature lists from toolbarConfig (captured at mount time)
+    const tc = toolbarConfig;
+    const disabledFeatures: string[] = ["use_localstorage_for_settings", "symbol_search_hot_key"];
+    const enabledFeatures: string[] = ["study_templates"];
+    if (!tc?.showSymbolSearch) disabledFeatures.push("header_symbol_search");
+    if (!tc?.showCompare)      disabledFeatures.push("header_compare");
+    if (!tc?.showUndoRedo)     disabledFeatures.push("header_undo_redo");
+    if (!tc?.showScreenshot)   disabledFeatures.push("header_screenshot");
+    if (!tc?.showChartType)    disabledFeatures.push("header_chart_type");
+    if (!tc?.showFullscreen)   disabledFeatures.push("header_fullscreen_button");
+
     import("@shared/tradingview").then((lib) => {
       if (cancelled || !containerRef.current) return;
 
@@ -274,13 +305,8 @@ export function AdvancedChartWidget({
         fullscreen: false,
         autosize: true,
         theme: theme === "light" ? "light" : "dark",
-        disabled_features: [
-          "use_localstorage_for_settings",
-          "header_symbol_search",
-          "header_compare",
-          "symbol_search_hot_key",
-        ],
-        enabled_features: ["study_templates"],
+        disabled_features: disabledFeatures,
+        enabled_features: enabledFeatures,
         loading_screen: {
           backgroundColor: chartBg ? resolveTokenColor(chartBg) : (theme === "dark" ? "#131722" : "#ffffff"),
         },
@@ -436,6 +462,9 @@ export function AdvancedChartWidget({
       } else {
         try {
           const plId = pl.id;
+          const plCfg = priceLinesConfigRef.current;
+          const extLeft = plCfg?.extendLeft ?? true;
+          const cancellable = plCfg?.showCancelButton ?? true;
           const mainLine = chart.createOrderLine({ disableUndo: true })
             .setPrice(pl.price)
             .setText(pl.pnlText ? `${pl.label}   ${pl.pnlText}` : pl.label)
@@ -450,8 +479,8 @@ export function AdvancedChartWidget({
             .setQuantityBackgroundColor("rgba(0,0,0,0)")
             .setQuantityBorderColor("rgba(0,0,0,0)")
             .setEditable(false)
-            .setExtendLeft(true)
-            .setCancellable(true)
+            .setExtendLeft(extLeft)
+            .setCancellable(cancellable)
             .setCancelButtonBackgroundColor(labelBg)
             .setCancelButtonBorderColor(labelBg)
             .setCancelButtonIconColor(labelText)

@@ -413,6 +413,20 @@ export interface CrosshairConfig {
   color?: string; // CSS token, e.g. "--accent-bg-default"
 }
 
+export interface AdvancedToolbarConfig {
+  showSymbolSearch: boolean;  // header_symbol_search
+  showCompare: boolean;       // header_compare
+  showUndoRedo: boolean;      // header_undo_redo
+  showScreenshot: boolean;    // header_screenshot
+  showChartType: boolean;     // header_chart_type
+  showFullscreen: boolean;    // header_fullscreen_button
+}
+
+export interface AdvancedPriceLinesConfig {
+  extendLeft: boolean;        // setExtendLeft() on order lines
+  showCancelButton: boolean;  // setCancellable() on order lines
+}
+
 interface ChartWidgetProps {
   priceLines: PriceLineConfig[];
   onPriceLineDrag?: (id: string, newPrice: number) => void;

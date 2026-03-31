@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ChartWidget, type PriceLineConfig, type TradeOrder, type CurrentPriceLineConfig, type CrosshairConfig } from "./components/chart-widget";
+import { ChartWidget, type PriceLineConfig, type TradeOrder, type CurrentPriceLineConfig, type CrosshairConfig, type AdvancedToolbarConfig, type AdvancedPriceLinesConfig } from "./components/chart-widget";
 
 import { KlineChartWidget } from "./components/klinechart-widget";
 import { AdvancedChartWidget } from "./components/advanced-chart-widget";
@@ -117,7 +117,23 @@ const STORAGE_KEYS = {
   sidebarTab: "chartConfig_sidebarTab",
   chartMode: "chartConfig_chartMode",
   historyOrders: "chartConfig_historyOrders",
+  advToolbar: "chartConfig_adv_toolbar",
+  advPriceLinesConfig: "chartConfig_adv_priceLinesConfig",
 } as const;
+
+const DEFAULT_ADV_TOOLBAR: AdvancedToolbarConfig = {
+  showSymbolSearch: false,
+  showCompare: false,
+  showUndoRedo: true,
+  showScreenshot: true,
+  showChartType: true,
+  showFullscreen: true,
+};
+
+const DEFAULT_ADV_PRICE_LINES_CONFIG: AdvancedPriceLinesConfig = {
+  extendLeft: true,
+  showCancelButton: true,
+};
 
 function lsGet<T>(key: string, fallback: T): T {
   try {
@@ -239,6 +255,10 @@ export default function App() {
   );
   const [gridStyle, setGridStyle] = useState<number>(() => lsGet(STORAGE_KEYS.gridStyle, 4));
   const [showGrid, setShowGrid] = useState<boolean>(() => lsGet(STORAGE_KEYS.showGrid, true));
+  const [advToolbarConfig, setAdvToolbarConfig] = useState<AdvancedToolbarConfig>(() => lsGet(STORAGE_KEYS.advToolbar, DEFAULT_ADV_TOOLBAR));
+  const [advPriceLinesConfig, setAdvPriceLinesConfig] = useState<AdvancedPriceLinesConfig>(() => lsGet(STORAGE_KEYS.advPriceLinesConfig, DEFAULT_ADV_PRICE_LINES_CONFIG));
+  // Incremented to force remount of AdvancedChartWidget when toolbar config changes
+  const [advWidgetKey, setAdvWidgetKey] = useState(0);
   const [historyOrders, setHistoryOrders] = useState<TradeOrder[]>(() => {
     const stored = lsGet<TradeOrder[]>(STORAGE_KEYS.historyOrders, []);
     return stored.length > 0 ? stored : DEFAULT_HISTORY_ORDERS;
@@ -289,6 +309,8 @@ export default function App() {
   useEffect(() => { lsSet(STORAGE_KEYS.crosshair, crosshairConfig); }, [crosshairConfig]);
   useEffect(() => { lsSet(STORAGE_KEYS.gridStyle, gridStyle); }, [gridStyle]);
   useEffect(() => { lsSet(STORAGE_KEYS.showGrid, showGrid); }, [showGrid]);
+  useEffect(() => { lsSet(STORAGE_KEYS.advToolbar, advToolbarConfig); }, [advToolbarConfig]);
+  useEffect(() => { lsSet(STORAGE_KEYS.advPriceLinesConfig, advPriceLinesConfig); }, [advPriceLinesConfig]);
   useEffect(() => { lsSet(STORAGE_KEYS.sidebarTab, sidebarTab); }, [sidebarTab]);
   useEffect(() => { lsSet(STORAGE_KEYS.chartMode, chartMode); }, [chartMode]);
   useEffect(() => { lsSet(STORAGE_KEYS.historyOrders, historyOrders); }, [historyOrders]);
@@ -328,6 +350,9 @@ export default function App() {
     setShowGrid(true);
     setCurrentPriceLineConfig({ visible: true, color: "--accent-bg-default", lineWidth: 0.5, lineStyle: 0, followCandleColor: true });
     setCrosshairConfig({ mode: 0, hStyle: 0, vStyle: 0, color: "--accent-transparent" });
+    setAdvToolbarConfig(DEFAULT_ADV_TOOLBAR);
+    setAdvPriceLinesConfig(DEFAULT_ADV_PRICE_LINES_CONFIG);
+    setAdvWidgetKey(k => k + 1);
   };
 
   const handleAddLevel = () => {
@@ -631,6 +656,7 @@ export default function App() {
                 />
               ) : (
                 <AdvancedChartWidget
+                  key={advWidgetKey}
                   theme={theme}
                   chartBg={chartBg}
                   gridColor={gridColor}
@@ -647,6 +673,8 @@ export default function App() {
                   currentPriceLineConfig={currentPriceLineConfig}
                   crosshairConfig={crosshairConfig}
                   onLivePrice={(p) => { livePriceRef.current = p; }}
+                  toolbarConfig={advToolbarConfig}
+                  priceLinesConfig={advPriceLinesConfig}
                 />
               )}
             </div>
@@ -821,6 +849,64 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Advanced-only sections ──────────────────────────── */}
+                  {isAdvanced && (
+                    <>
+                    <div className="h-px" style={{ background: "var(--border)" }} />
+
+                    {/* Price Lines (Advanced) */}
+                    <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Price Lines</h4>
+                    <div className="flex flex-col gap-[8px]">
+                      <label className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                        <input type="checkbox" checked={advPriceLinesConfig.extendLeft} onChange={(e) => setAdvPriceLinesConfig(c => ({ ...c, extendLeft: e.target.checked }))} className="cursor-pointer" />
+                        Extend lines left
+                      </label>
+                      <label className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                        <input type="checkbox" checked={advPriceLinesConfig.showCancelButton} onChange={(e) => setAdvPriceLinesConfig(c => ({ ...c, showCancelButton: e.target.checked }))} className="cursor-pointer" />
+                        Show hide button (×)
+                      </label>
+                    </div>
+
+                    <div className="h-px" style={{ background: "var(--border)" }} />
+
+                    {/* Toolbar (Advanced) */}
+                    <div className="flex items-center justify-between">
+                      <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Toolbar</h4>
+                      <button
+                        onClick={() => setAdvWidgetKey(k => k + 1)}
+                        className="px-[10px] py-[4px] rounded-[var(--radius-sm)] border border-border hover:bg-secondary transition-colors cursor-pointer"
+                        style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}
+                        title="Reload chart to apply toolbar changes"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-[8px]">
+                      {([
+                        { key: "showUndoRedo",     label: "Undo / Redo" },
+                        { key: "showChartType",    label: "Chart type" },
+                        { key: "showScreenshot",   label: "Screenshot" },
+                        { key: "showFullscreen",   label: "Fullscreen" },
+                        { key: "showSymbolSearch", label: "Symbol search" },
+                        { key: "showCompare",      label: "Compare" },
+                      ] as { key: keyof AdvancedToolbarConfig; label: string }[]).map(({ key, label }) => (
+                        <label key={key} className="flex items-center gap-[8px] cursor-pointer" style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
+                          <input
+                            type="checkbox"
+                            checked={advToolbarConfig[key]}
+                            onChange={(e) => setAdvToolbarConfig(c => ({ ...c, [key]: e.target.checked }))}
+                            className="cursor-pointer"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                      <p style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)", opacity: 0.6, marginTop: "2px" }}>
+                        Changes take effect after Apply
+                      </p>
+                    </div>
+                    </>
+                  )}
                   </>
                 )}
 
