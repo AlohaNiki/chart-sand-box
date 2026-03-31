@@ -24,13 +24,25 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-/** Default price lines (used on first visit and on Reset) */
-const DEFAULT_PRICE_LINES: PriceLineConfig[] = [
-  { id: "custom-1", label: "Liq. Price",   price: 64200,    color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",  lineWidth: 1, lineStyle: 0, visible: true },
-  { id: "custom-2", label: "Open Long",    price: 78500,    color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "+$1,840 (7.1%)" },
-  { id: "custom-3", label: "Open Short",   price: 91800,    color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "-$1,260 (-4.2%)" },
-  { id: "custom-4", label: "Limit Long",   price: 74000,    color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 2, visible: true },
-  { id: "custom-5", label: "Limit Short",  price: 96500,    color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 2, visible: true },
+/** Default price lines for Lightweight & KlineChart */
+const DEFAULT_LW_PRICE_LINES: PriceLineConfig[] = [
+  { id: "custom-1", label: "Liq. Price",  price: 61502.53, color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",              lineWidth: 1,   lineStyle: 0, visible: true },
+  { id: "custom-2", label: "TP",          price: 98324.98, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over",             lineWidth: 1,   lineStyle: 3, visible: true },
+  { id: "custom-3", label: "SL",          price: 94597.55, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over",             lineWidth: 1,   lineStyle: 3, visible: true },
+  { id: "custom-4", label: "AO",          price: 90553,    color: "--contrast-secondary",  labelColor: "--surface-elevation-3", labelTextColor: "--contrast-primary",          lineWidth: 1,   lineStyle: 2, visible: true },
+  { id: "custom-5", label: "Open Long",   price: 86895.97, color: "--positive-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--positive-text-and-icons",   lineWidth: 1,   lineStyle: 2, visible: true },
+  { id: "custom-6", label: "Open Short",  price: 82524.48, color: "--negative-bg-default", labelColor: "--surface-elevation-3", labelTextColor: "--negative-text-and-icons",   lineWidth: 1,   lineStyle: 2, visible: true },
+  { id: "custom-7", label: "Entry",       price: 78501.54, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",            lineWidth: 0.5, lineStyle: 0, visible: true },
+  { id: "custom-8", label: "Close",       price: 74937.98, color: "--contrast-secondary",  labelColor: "--contrast-primary",    labelTextColor: "--surface-canvas",            lineWidth: 0.5, lineStyle: 0, visible: true },
+];
+
+/** Default price lines for Advanced (TradingView) */
+const DEFAULT_ADV_PRICE_LINES: PriceLineConfig[] = [
+  { id: "adv-1", label: "Liq. Price",   price: 64200, color: "--warning-bg-default",  labelColor: "--warning-bg-default",  labelTextColor: "--warning-over",  lineWidth: 1, lineStyle: 0, visible: true },
+  { id: "adv-2", label: "Open Long",    price: 78500, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "+$1,840 (7.1%)" },
+  { id: "adv-3", label: "Open Short",   price: 91800, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 0, visible: true, pnlText: "-$1,260 (-4.2%)" },
+  { id: "adv-4", label: "Limit Long",   price: 74000, color: "--positive-bg-default", labelColor: "--positive-bg-default", labelTextColor: "--positive-over", lineWidth: 1, lineStyle: 2, visible: true },
+  { id: "adv-5", label: "Limit Short",  price: 96500, color: "--negative-bg-default", labelColor: "--negative-bg-default", labelTextColor: "--negative-over", lineWidth: 1, lineStyle: 2, visible: true },
 ];
 
 
@@ -91,7 +103,9 @@ const DEFAULT_HISTORY_ORDERS: TradeOrder[] = [
 
 const STORAGE_KEYS = {
   theme: "chartConfig_theme",
-  priceLines: "chartConfig_priceLines",
+  lwPriceLines: "chartConfig_lw_priceLines",
+  klinePriceLines: "chartConfig_kline_priceLines",
+  advPriceLines: "chartConfig_adv_priceLines",
   chartBg: "chartConfig_chartBg",
   gridColor: "chartConfig_gridColor",
   gridStyle: "chartConfig_gridStyle",
@@ -162,23 +176,25 @@ export default function App() {
     setTheme(next);
   }, [theme]);
 
-  // ── Persist priceLines in localStorage ───────────────────────────────────
-  const [priceLines, setPriceLines] = useState<PriceLineConfig[]>(() => {
+  // ── Per-chart price lines (each chart has its own list) ──────────────────
+  function loadPriceLines(key: string, defaults: PriceLineConfig[]): PriceLineConfig[] {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.priceLines);
-      if (!stored) return DEFAULT_PRICE_LINES;
+      const stored = localStorage.getItem(key);
+      if (!stored) return defaults;
       const parsed = JSON.parse(stored);
-      if (!Array.isArray(parsed)) return DEFAULT_PRICE_LINES;
+      if (!Array.isArray(parsed)) return defaults;
       const validated = parsed.filter(isValidPriceLine);
-      return validated.length > 0 ? validated : DEFAULT_PRICE_LINES;
-    } catch {
-      return DEFAULT_PRICE_LINES;
-    }
-  });
+      return validated.length > 0 ? validated : defaults;
+    } catch { return defaults; }
+  }
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.priceLines, JSON.stringify(priceLines)); } catch {}
-  }, [priceLines]);
+  const [lwPriceLines, setLwPriceLines] = useState<PriceLineConfig[]>(() => loadPriceLines(STORAGE_KEYS.lwPriceLines, DEFAULT_LW_PRICE_LINES));
+  const [klinePriceLines, setKlinePriceLines] = useState<PriceLineConfig[]>(() => loadPriceLines(STORAGE_KEYS.klinePriceLines, DEFAULT_LW_PRICE_LINES));
+  const [advPriceLines, setAdvPriceLines] = useState<PriceLineConfig[]>(() => loadPriceLines(STORAGE_KEYS.advPriceLines, DEFAULT_ADV_PRICE_LINES));
+
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.lwPriceLines, JSON.stringify(lwPriceLines)); } catch {} }, [lwPriceLines]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.klinePriceLines, JSON.stringify(klinePriceLines)); } catch {} }, [klinePriceLines]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.advPriceLines, JSON.stringify(advPriceLines)); } catch {} }, [advPriceLines]);
 
   // ── Chart appearance settings ─────────────────────────────────────────────
   const [chartBg, setChartBg] = useState<string>(() => lsGet(STORAGE_KEYS.chartBg, "--surface-elevation-1"));
@@ -197,6 +213,21 @@ export default function App() {
   const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null);
   const [showChangelog, setShowChangelog] = useState(false);
   const [chartMode, setChartMode] = useState<"lightweight" | "klinechart" | "advanced">(() => lsGet(STORAGE_KEYS.chartMode, "lightweight"));
+
+  // Active chart's price lines — each chart manages its own list
+  const activePriceLines =
+    chartMode === "lightweight" ? lwPriceLines :
+    chartMode === "klinechart" ? klinePriceLines :
+    advPriceLines;
+
+  const setActivePriceLines = useCallback(
+    (updater: PriceLineConfig[] | ((prev: PriceLineConfig[]) => PriceLineConfig[])) => {
+      if (chartMode === "lightweight") setLwPriceLines(updater as (prev: PriceLineConfig[]) => PriceLineConfig[]);
+      else if (chartMode === "klinechart") setKlinePriceLines(updater as (prev: PriceLineConfig[]) => PriceLineConfig[]);
+      else setAdvPriceLines(updater as (prev: PriceLineConfig[]) => PriceLineConfig[]);
+    },
+    [chartMode],
+  );
 
   // ── History tab ───────────────────────────────────────────────────────────
   const [sidebarTab, setSidebarTab] = useState<"chart" | "orders" | "history">(() => lsGet(STORAGE_KEYS.sidebarTab, "orders"));
@@ -280,15 +311,15 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLineChange = useCallback((updated: PriceLineConfig) => {
-    setPriceLines((prev) =>
+    setActivePriceLines((prev) =>
       prev.map((pl) => (pl.id === updated.id ? updated : pl))
     );
-  }, []);
+  }, [setActivePriceLines]);
 
   const handleReset = () => {
     if (!window.confirm("Reset all price lines and chart settings to defaults? This cannot be undone.")) return;
     setImportMessage(null);
-    setPriceLines(DEFAULT_PRICE_LINES);
+    setActivePriceLines(isAdvanced ? DEFAULT_ADV_PRICE_LINES : DEFAULT_LW_PRICE_LINES);
     setOrders(DEFAULT_ORDERS);
     setShowOrders(true);
     setChartBg("--surface-elevation-1");
@@ -301,7 +332,7 @@ export default function App() {
 
   const handleAddLevel = () => {
     const id = `custom-${nextCustomId++}`;
-    const basePrice = livePriceRef.current || priceLines[priceLines.length - 1]?.price || 43000;
+    const basePrice = livePriceRef.current || activePriceLines[activePriceLines.length - 1]?.price || 43000;
     const newLine: PriceLineConfig = {
       id,
       label: `Level ${nextCustomId - 1}`,
@@ -313,21 +344,21 @@ export default function App() {
       lineStyle: 2,
       visible: true,
     };
-    setPriceLines((prev) => [...prev, newLine]);
+    setActivePriceLines((prev) => [...prev, newLine]);
   };
 
   const handleDeleteLine = useCallback((id: string) => {
-    setPriceLines((prev) => prev.filter((pl) => pl.id !== id));
-  }, []);
+    setActivePriceLines((prev) => prev.filter((pl) => pl.id !== id));
+  }, [setActivePriceLines]);
 
   const handleMoveLine = useCallback((dragIndex: number, hoverIndex: number) => {
-    setPriceLines((prev) => {
+    setActivePriceLines((prev) => {
       const updated = [...prev];
       const [removed] = updated.splice(dragIndex, 1);
       updated.splice(hoverIndex, 0, removed);
       return updated;
     });
-  }, []);
+  }, [setActivePriceLines]);
 
   const handleDuplicateLine = useCallback((source: PriceLineConfig) => {
     const id = `custom-${nextCustomId++}`;
@@ -337,17 +368,17 @@ export default function App() {
       label: `${source.label} (copy)`,
       price: source.price + 200,
     };
-    setPriceLines((prev) => {
+    setActivePriceLines((prev) => {
       const sourceIndex = prev.findIndex((pl) => pl.id === source.id);
       const updated = [...prev];
       updated.splice(sourceIndex + 1, 0, duplicate);
       return updated;
     });
-  }, []);
+  }, [setActivePriceLines]);
 
-  /** Called when user drags a price line directly on the chart */
+  /** Called when user drags a price line directly on the chart (Lightweight only) */
   const handleChartDrag = useCallback((id: string, newPrice: number) => {
-    setPriceLines((prev) =>
+    setLwPriceLines((prev) =>
       prev.map((pl) => (pl.id === id ? { ...pl, price: newPrice } : pl))
     );
   }, []);
@@ -357,7 +388,7 @@ export default function App() {
     const payload = {
       version: 1,
       exportedAt: new Date().toISOString(),
-      priceLines,
+      priceLines: activePriceLines,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
@@ -416,7 +447,7 @@ export default function App() {
           };
         });
 
-        setPriceLines(finalLines);
+        setActivePriceLines(finalLines);
         setImportMessage({
           text: `Imported ${finalLines.length} line${finalLines.length > 1 ? "s" : ""}`,
           type: "success",
@@ -436,10 +467,10 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Price lines shown on chart depend on active sidebar tab + chart mode ─────
+  // ── Price lines per chart ─────────────────────────────────────────────────
   const isAdvanced = chartMode === "advanced";
-  const sidebarPriceLines = priceLines;
 
+  // Lightweight & KlineChart expand TP/SL into virtual child lines
   function expandWithTpSl(lines: PriceLineConfig[]): PriceLineConfig[] {
     return lines.flatMap((pl) => {
       const result: PriceLineConfig[] = [pl];
@@ -453,7 +484,10 @@ export default function App() {
     });
   }
 
-  const effectivePriceLines = sidebarTab === "history" ? [] : expandWithTpSl(priceLines);
+  const lwEffectiveLines = sidebarTab === "history" ? [] : expandWithTpSl(lwPriceLines);
+  const klineEffectiveLines = sidebarTab === "history" ? [] : expandWithTpSl(klinePriceLines);
+  // Advanced: TV manages TP/SL natively — pass raw lines
+  const advEffectiveLines = sidebarTab === "history" ? [] : advPriceLines;
 
   const LINE_STYLE_SVG = [
     { value: 0, label: "Solid",  dash: undefined as string | undefined },
@@ -564,7 +598,7 @@ export default function App() {
             >
               {chartMode === "lightweight" ? (
                 <ChartWidget
-                  priceLines={effectivePriceLines}
+                  priceLines={lwEffectiveLines}
                   onPriceLineDrag={sidebarTab !== "history" ? handleChartDrag : undefined}
                   theme={theme}
                   chartBg={chartBg}
@@ -584,7 +618,7 @@ export default function App() {
                 />
               ) : chartMode === "klinechart" ? (
                 <KlineChartWidget
-                  priceLines={effectivePriceLines}
+                  priceLines={klineEffectiveLines}
                   theme={theme}
                   chartBg={chartBg}
                   gridColor={gridColor}
@@ -602,7 +636,11 @@ export default function App() {
                   gridColor={gridColor}
                   gridStyle={gridStyle}
                   showGrid={showGrid}
-                  priceLines={effectivePriceLines}
+                  priceLines={advEffectiveLines}
+                  onPriceLineChange={(id, updates) => {
+                    const pl = advPriceLines.find(p => p.id === id);
+                    if (pl) handleLineChange({ ...pl, ...updates });
+                  }}
                   orders={orders}
                   showOrders={showOrders}
                   onOrderClick={setSelectedOrder}
@@ -793,7 +831,7 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <h4 style={{ color: "var(--foreground)", fontFamily: "'Inter Display', sans-serif" }}>Price Lines</h4>
                     <span style={{ color: "var(--muted-foreground)", fontFamily: "'Inter Display', sans-serif", fontSize: "var(--text-label)" }}>
-                      {sidebarPriceLines.filter((p) => p.visible).length}/{sidebarPriceLines.length} visible
+                      {activePriceLines.filter((p) => p.visible).length}/{activePriceLines.length} visible
                     </span>
                   </div>
 
@@ -813,7 +851,7 @@ export default function App() {
                       <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleImport} className="hidden" />
                     </label>
                     <button
-                      onClick={() => { if (window.confirm("Delete all price lines and active orders? This cannot be undone.")) { setPriceLines([]); setOrders([]); } }}
+                      onClick={() => { if (window.confirm("Delete all price lines and active orders? This cannot be undone.")) { setActivePriceLines([]); setOrders([]); } }}
                       className="flex items-center justify-center w-[32px] h-[32px] shrink-0 rounded-[var(--radius)] border border-border hover:bg-secondary transition-colors cursor-pointer"
                       title="Delete all price lines">
                       <Trash2 size={13} style={{ color: "var(--muted-foreground)" }} />
@@ -829,7 +867,7 @@ export default function App() {
                   )}
 
                   {/* Draggable list */}
-                  {sidebarPriceLines.map((config, index) => (
+                  {activePriceLines.map((config, index) => (
                     <PriceLineEditor key={config.id} index={index} config={config} onChange={handleLineChange} onDelete={handleDeleteLine} onDuplicate={handleDuplicateLine} onMove={handleMoveLine} canDelete={true} maxStyles={isAdvanced ? 3 : undefined} />
                   ))}
 

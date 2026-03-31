@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type {
   IChartingLibraryWidget,
   IOrderLineAdapter,
@@ -160,6 +160,7 @@ interface AdvancedChartWidgetProps {
   gridStyle?: number;
   showGrid?: boolean;
   priceLines?: PriceLineConfig[];
+  onPriceLineChange?: (id: string, updates: Partial<PriceLineConfig>) => void;
   orders?: TradeOrder[];
   showOrders?: boolean;
   onOrderClick?: (order: TradeOrder) => void;
@@ -176,6 +177,7 @@ export function AdvancedChartWidget({
   gridStyle,
   showGrid,
   priceLines = [],
+  onPriceLineChange,
   orders = [],
   showOrders = true,
   onOrderClick,
@@ -190,14 +192,28 @@ export function AdvancedChartWidget({
 
   // Refs to keep latest props accessible inside TV callbacks without stale closures
   const onOrderClickRef = useRef(onOrderClick);
+  const onPriceLineChangeRef = useRef(onPriceLineChange);
   const ordersRef = useRef(orders);
   const showOrdersRef = useRef(showOrders);
   const priceLinesRef = useRef(priceLines);
 
   useEffect(() => { onOrderClickRef.current = onOrderClick; }, [onOrderClick]);
+  useEffect(() => { onPriceLineChangeRef.current = onPriceLineChange; }, [onPriceLineChange]);
   useEffect(() => { ordersRef.current = orders; }, [orders]);
   useEffect(() => { showOrdersRef.current = showOrders; }, [showOrders]);
   useEffect(() => { priceLinesRef.current = priceLines; }, [priceLines]);
+
+  // Selected line — click a main order line on chart to reveal its TP/SL
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const selectedLineIdRef = useRef<string | null>(null);
+  const lastCrosshairPriceRef = useRef<number | null>(null);
+  useEffect(() => {
+    selectedLineIdRef.current = selectedLineId;
+    if (!chartReadyRef.current) return;
+    syncPriceLines();
+  // syncPriceLines is stable (no deps change); selectedLineId is the real trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLineId]);
 
   // Track drawn objects
   const orderLinesRef = useRef<Map<string, IOrderLineAdapter>>(new Map());
@@ -219,9 +235,28 @@ export function AdvancedChartWidget({
   useEffect(() => {
     if (!containerRef.current) return;
     let cancelled = false;
+    const container = containerRef.current;
 
     const containerId = `tv-advanced-${Date.now()}`;
-    containerRef.current.id = containerId;
+    container.id = containerId;
+
+    // Click detection: find nearest order line to the crosshair price and toggle it selected
+    const handleClick = () => {
+      const price = lastCrosshairPriceRef.current;
+      if (price == null) return;
+      const lines = priceLinesRef.current.filter(pl => pl.visible);
+      let bestId: string | null = null;
+      let bestDiff = Infinity;
+      lines.forEach(pl => {
+        const diff = Math.abs(pl.price - price);
+        if (diff < bestDiff) { bestDiff = diff; bestId = pl.id; }
+      });
+      const threshold = bestId != null
+        ? (priceLinesRef.current.find(p => p.id === bestId)?.price ?? 0) * 0.008
+        : Infinity;
+      setSelectedLineId(prev => (bestId && bestDiff < threshold) ? (prev === bestId ? null : bestId) : null);
+    };
+    container.addEventListener("click", handleClick);
 
     const feed = makeDatafeed(onLivePrice);
     datafeedRef.current = feed;
@@ -257,6 +292,14 @@ export function AdvancedChartWidget({
         if (cancelled) return;
         chartReadyRef.current = true;
 
+        // Track crosshair price for click-to-select detection
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (widget.activeChart() as any).crossHairMoved((params: { price: number }) => {
+            if (typeof params?.price === "number") lastCrosshairPriceRef.current = params.price;
+          });
+        } catch { /* ignore if API not available */ }
+
         // Apply initial appearance
         applyAppearance();
         syncPriceLines();
@@ -266,6 +309,7 @@ export function AdvancedChartWidget({
 
     return () => {
       cancelled = true;
+      container.removeEventListener("click", handleClick);
       chartReadyRef.current = false;
       orderLinesRef.current.clear();
       executionShapesRef.current.clear();
@@ -333,13 +377,24 @@ export function AdvancedChartWidget({
     if (!chart) return;
 
     const current = priceLinesRef.current;
-    const existingIds = new Set(orderLinesRef.current.keys());
-    const newIds = new Set(current.filter(pl => pl.visible).map(pl => pl.id));
 
-    // Remove stale
-    existingIds.forEach(id => {
-      if (!newIds.has(id)) {
-        try { orderLinesRef.current.get(id)?.remove(); } catch { /* ignore */ }
+    const selectedId = selectedLineIdRef.current;
+
+    // Build the full set of IDs we want (main + TP/SL only for selected line)
+    const desiredIds = new Set<string>();
+    current.forEach(pl => {
+      if (!pl.visible) return;
+      desiredIds.add(pl.id);
+      if (pl.id === selectedId) {
+        if (pl.takeProfit != null) desiredIds.add(`${pl.id}-tp`);
+        if (pl.stopLoss != null) desiredIds.add(`${pl.id}-sl`);
+      }
+    });
+
+    // Remove stale lines
+    Array.from(orderLinesRef.current.entries()).forEach(([id, line]) => {
+      if (!desiredIds.has(id)) {
+        try { line.remove(); } catch { /* ignore */ }
         orderLinesRef.current.delete(id);
       }
     });
@@ -347,10 +402,13 @@ export function AdvancedChartWidget({
     // Add / update
     current.forEach(pl => {
       if (!pl.visible) {
-        if (orderLinesRef.current.has(pl.id)) {
-          try { orderLinesRef.current.get(pl.id)?.remove(); } catch { /* ignore */ }
-          orderLinesRef.current.delete(pl.id);
-        }
+        // Also purge any children that may remain
+        [`${pl.id}-tp`, `${pl.id}-sl`].forEach(childId => {
+          if (orderLinesRef.current.has(childId)) {
+            try { orderLinesRef.current.get(childId)?.remove(); } catch { /* ignore */ }
+            orderLinesRef.current.delete(childId);
+          }
+        });
         return;
       }
 
@@ -358,28 +416,27 @@ export function AdvancedChartWidget({
       const labelBg = resolveTokenColor(pl.labelColor);
       const labelText = resolveTokenColor(pl.labelTextColor);
 
-      const existing = orderLinesRef.current.get(pl.id);
-      if (existing) {
+      // ── Main order line ────────────────────────────────────────────────────
+      const existingMain = orderLinesRef.current.get(pl.id);
+      if (existingMain) {
         try {
-          existing
+          existingMain
             .setPrice(pl.price)
             .setText(pl.pnlText ? `${pl.label}   ${pl.pnlText}` : pl.label)
             .setLineColor(lineColor)
             .setLineStyle(toTVLineStyle(pl.lineStyle))
             .setLineWidth(pl.lineWidth)
-            .setBodyFont("bold 11px 'Inter Display', sans-serif")
             .setBodyBackgroundColor(labelBg)
             .setBodyBorderColor(labelBg)
             .setBodyTextColor(labelText)
-            .setQuantity("")
-            .setQuantityBackgroundColor("rgba(0,0,0,0)")
-            .setQuantityBorderColor("rgba(0,0,0,0)")
-            .setCancelButtonBackgroundColor("rgba(0,0,0,0)")
-            .setCancelButtonBorderColor("rgba(0,0,0,0)");
+            .setCancelButtonBackgroundColor(labelBg)
+            .setCancelButtonBorderColor(labelBg)
+            .setCancelButtonIconColor(labelText);
         } catch { /* ignore if removed */ }
       } else {
         try {
-          const line = chart.createOrderLine({ disableUndo: true })
+          const plId = pl.id;
+          const mainLine = chart.createOrderLine({ disableUndo: true })
             .setPrice(pl.price)
             .setText(pl.pnlText ? `${pl.label}   ${pl.pnlText}` : pl.label)
             .setLineColor(lineColor)
@@ -393,13 +450,135 @@ export function AdvancedChartWidget({
             .setQuantityBackgroundColor("rgba(0,0,0,0)")
             .setQuantityBorderColor("rgba(0,0,0,0)")
             .setEditable(false)
-            .setCancellable(false)
-            .setCancelButtonBackgroundColor("rgba(0,0,0,0)")
-            .setCancelButtonBorderColor("rgba(0,0,0,0)")
-            .setCancelButtonIconColor("rgba(0,0,0,0)");
-
-          orderLinesRef.current.set(pl.id, line);
+            .setExtendLeft(true)
+            .setCancellable(true)
+            .setCancelButtonBackgroundColor(labelBg)
+            .setCancelButtonBorderColor(labelBg)
+            .setCancelButtonIconColor(labelText)
+            .onCancel(() => {
+              onPriceLineChangeRef.current?.(plId, { visible: false });
+            });
+          orderLinesRef.current.set(pl.id, mainLine);
         } catch { /* ignore */ }
+      }
+
+      // ── Take Profit / Stop Loss — only visible when this line is selected ─
+      if (pl.id !== selectedId) return;
+
+      // ── Take Profit child line ─────────────────────────────────────────────
+      const tpId = `${pl.id}-tp`;
+      const tpColor = resolveTokenColor("--positive-bg-default");
+      const tpTextColor = resolveTokenColor("--positive-over");
+
+      if (pl.takeProfit != null) {
+        const existingTp = orderLinesRef.current.get(tpId);
+        if (existingTp) {
+          try {
+            existingTp
+              .setPrice(pl.takeProfit)
+              .setLineColor(tpColor)
+              .setBodyBackgroundColor(tpColor)
+              .setBodyBorderColor(tpColor)
+              .setBodyTextColor(tpTextColor)
+              .setCancelButtonBackgroundColor(tpColor)
+              .setCancelButtonBorderColor(tpColor)
+              .setCancelButtonIconColor(tpTextColor);
+          } catch { /* ignore */ }
+        } else {
+          try {
+            const plId = pl.id;
+            let tpLine: IOrderLineAdapter;
+            tpLine = chart.createOrderLine({ disableUndo: true })
+              .setPrice(pl.takeProfit)
+              .setText("TP")
+              .setLineColor(tpColor)
+              .setLineStyle(2) // Dashed
+              .setLineWidth(1)
+              .setBodyFont("bold 11px 'Inter Display', sans-serif")
+              .setBodyBackgroundColor(tpColor)
+              .setBodyBorderColor(tpColor)
+              .setBodyTextColor(tpTextColor)
+              .setQuantity("")
+              .setQuantityBackgroundColor("rgba(0,0,0,0)")
+              .setQuantityBorderColor("rgba(0,0,0,0)")
+              .setEditable(true)
+              .setExtendLeft(true)
+              .setCancellable(true)
+              .setCancelButtonBackgroundColor(tpColor)
+              .setCancelButtonBorderColor(tpColor)
+              .setCancelButtonIconColor(tpTextColor)
+              .onMove(() => {
+                onPriceLineChangeRef.current?.(plId, { takeProfit: tpLine.getPrice() });
+              })
+              .onCancel(() => {
+                onPriceLineChangeRef.current?.(plId, { takeProfit: undefined });
+              });
+            orderLinesRef.current.set(tpId, tpLine);
+          } catch { /* ignore */ }
+        }
+      } else {
+        if (orderLinesRef.current.has(tpId)) {
+          try { orderLinesRef.current.get(tpId)?.remove(); } catch { /* ignore */ }
+          orderLinesRef.current.delete(tpId);
+        }
+      }
+
+      // ── Stop Loss child line ───────────────────────────────────────────────
+      const slId = `${pl.id}-sl`;
+      const slColor = resolveTokenColor("--negative-bg-default");
+      const slTextColor = resolveTokenColor("--negative-over");
+
+      if (pl.stopLoss != null) {
+        const existingSl = orderLinesRef.current.get(slId);
+        if (existingSl) {
+          try {
+            existingSl
+              .setPrice(pl.stopLoss)
+              .setLineColor(slColor)
+              .setBodyBackgroundColor(slColor)
+              .setBodyBorderColor(slColor)
+              .setBodyTextColor(slTextColor)
+              .setCancelButtonBackgroundColor(slColor)
+              .setCancelButtonBorderColor(slColor)
+              .setCancelButtonIconColor(slTextColor);
+          } catch { /* ignore */ }
+        } else {
+          try {
+            const plId = pl.id;
+            let slLine: IOrderLineAdapter;
+            slLine = chart.createOrderLine({ disableUndo: true })
+              .setPrice(pl.stopLoss)
+              .setText("SL")
+              .setLineColor(slColor)
+              .setLineStyle(2) // Dashed
+              .setLineWidth(1)
+              .setBodyFont("bold 11px 'Inter Display', sans-serif")
+              .setBodyBackgroundColor(slColor)
+              .setBodyBorderColor(slColor)
+              .setBodyTextColor(slTextColor)
+              .setQuantity("")
+              .setQuantityBackgroundColor("rgba(0,0,0,0)")
+              .setQuantityBorderColor("rgba(0,0,0,0)")
+              .setEditable(true)
+              .setExtendLeft(true)
+              .setCancellable(true)
+              .setCancelButtonBackgroundColor(slColor)
+              .setCancelButtonBorderColor(slColor)
+              .setCancelButtonIconColor(slTextColor)
+              .onMove(() => {
+                onPriceLineChangeRef.current?.(plId, { stopLoss: slLine.getPrice() });
+              })
+              .onCancel(() => {
+                onPriceLineChangeRef.current?.(plId, { stopLoss: undefined });
+              });
+            orderLinesRef.current.set(slId, slLine);
+          } catch { /* ignore */ }
+        }
+      } else {
+        if (orderLinesRef.current.has(slId)) {
+          try { orderLinesRef.current.get(slId)?.remove(); } catch { /* ignore */ }
+          orderLinesRef.current.delete(slId);
+        }
       }
     });
   }, [getChart]);
