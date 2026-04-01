@@ -10,6 +10,20 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.22",
+    date: "Apr 1, 2026",
+    title: "Advanced chart — order line settings & toolbar config",
+    items: [
+      "Price line editor for Advanced tab: per-line Show PnL, PnL text, Take Profit, Stop Loss, Extend Left, Show × button",
+      "TP/SL order lines appear immediately when toggled — no click-to-select required",
+      "Toolbar settings section in Chart tab: toggle Symbol Search, Compare, Undo/Redo, Screenshot, Chart Type, Fullscreen",
+      "Toolbar background color picker (CSS token) with Apply button that remounts the TV widget",
+      "Fixed Show PnL — now respects the checkbox flag, not just presence of text",
+      "Fixed Show × button — line is recreated when cancellable state changes",
+      "Extend Left and Show × button moved from global price line settings to each individual order line editor",
+    ],
+  },
+  {
     version: "0.21",
     date: "Mar 30, 2026",
     title: "Advanced Chart — TradingView Charting Library",
